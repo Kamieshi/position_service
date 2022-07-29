@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
 	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -180,4 +181,12 @@ func (c *UserService) GetAll(ctx context.Context) ([]*model.User, error) {
 		return nil, fmt.Errorf("Service User / GetAll / get all Users from repository User : %v", err)
 	}
 	return Users, nil
+}
+
+func (c *UserService) AddProfitInRepositoryTX(ctx context.Context, tx pgx.Tx, userID uuid.UUID, profit int64) error {
+	err := c.UserRep.AddProfitTX(ctx, tx, userID, profit)
+	if err != nil {
+		return fmt.Errorf("User storage / AddProfitInRepositoryTX / Try add profit to user : %v", err)
+	}
+	return nil
 }

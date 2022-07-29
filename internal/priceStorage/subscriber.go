@@ -19,9 +19,9 @@ type StreamPriceCompany struct {
 	rwm         sync.RWMutex
 }
 
-// NewSubscriber Constructor
-func NewSubscriber() *StreamPriceCompany {
-	log.Debug("func NewSubscriber() *StreamPriceCompany ")
+// NewStreamPriceCompany Constructor
+func NewStreamPriceCompany() *StreamPriceCompany {
+	log.Debug("func NewStreamPriceCompany() *StreamPriceCompany ")
 	return &StreamPriceCompany{
 		DataChan:    make(chan *model.Price),
 		Subscribers: list.New(),

@@ -111,3 +111,12 @@ func (c *UserRepository) GetAll(ctx context.Context) ([]*model.User, error) {
 	}
 	return clients, nil
 }
+
+func (c *UserRepository) AddProfitTX(ctx context.Context, tx pgx.Tx, userID uuid.UUID, profit int64) error {
+	querySQL := "UPDATE clients SET balance = balance + $1 WHERE id = $2;"
+	cm, err := tx.Exec(ctx, querySQL, profit, userID)
+	if err != nil {
+		return fmt.Errorf("repository client / AddProfitTX / Add profit: %v , message : %s", err, cm.String())
+	}
+	return nil
+}

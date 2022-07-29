@@ -25,11 +25,11 @@ var (
 	priceStorage        *prst.PriceStore
 	UserServiceClient   protoc.UsersManagerClient
 	UserRep             *repository.UserRepository
-	companyID           = "0b215a76-476c-4007-9c28-479119d4244c"
+	companyID           = "dfecfe51-f7c5-476c-bed3-6c7e11142ac7"
 )
 
 func TestMain(m *testing.M) {
-	PositionService, err := grpc.Dial("localhost:5302", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	PositionService, err := grpc.Dial("localhost:5301", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("fail to dial: %v", err)
 	}

@@ -15,20 +15,20 @@ import (
 )
 
 type ClientPositions struct {
-	Positions         *list.List
-	channelsFromClose map[uuid.UUID]chan bool
-	userStorage       *userStorage.UserService
-	syncGroup         sync.WaitGroup
-	rwm               sync.RWMutex
+	Positions                     *list.List
+	channelsFromClose             map[uuid.UUID]chan bool
+	userStorage                   *userStorage.UserService
+	rwm                           sync.RWMutex
+	BufferWriteClosePositionsInDB chan *model.Position
 }
 
 func NewClientPositions(userSt *userStorage.UserService) *ClientPositions {
 	logrus.Debug("NewClientPositions")
 	return &ClientPositions{
-		syncGroup:         sync.WaitGroup{},
-		Positions:         list.New(),
-		channelsFromClose: make(map[uuid.UUID]chan bool),
-		userStorage:       userSt,
+		Positions:                     list.New(),
+		channelsFromClose:             make(map[uuid.UUID]chan bool),
+		BufferWriteClosePositionsInDB: make(chan *model.Position, 100), // Add size buffer in config
+		userStorage:                   userSt,
 	}
 }
 
@@ -45,27 +45,19 @@ func (p *ClientPositions) OpenPosition(ctx context.Context, position *model.Posi
 	p.channelsFromClose[position.ID] = chCLose
 	p.Positions.PushBack(position)
 	p.rwm.Unlock()
-	p.syncGroup.Add(1)
 	go p.TakeActualState(ctx, position, chPrice)
 	return nil
 }
 
 func (p *ClientPositions) ClosePosition(position *model.Position) error {
 	logrus.Debug("ClosePosition")
-	user, err := p.userStorage.Get(context.Background(), position.Client.ID)
-	if err != nil {
-		return fmt.Errorf("user position / ClosePosition / get user : %v", err)
-	}
 	delete(p.channelsFromClose, position.ID)
-	err = p.userStorage.AddProfit(position.Profit, position.Client.ID)
+	err := p.userStorage.AddProfit(position.Profit, position.Client.ID)
 	if err != nil {
 		return fmt.Errorf("user position / ClosePosition / add profit: %v", err)
 	}
-	err = p.userStorage.Update(context.Background(), user)
-	if err != nil {
-		return fmt.Errorf("user position / ClosePosition / update user in DB: %v", err)
-	}
 	close(p.channelsFromClose[position.ID])
+	p.BufferWriteClosePositionsInDB <- position
 	return nil
 }
 
@@ -87,11 +79,9 @@ func (p *ClientPositions) TakeActualState(ctx context.Context, position *model.P
 		logrus.Debug("TakeActualState in FOR")
 		select {
 		case <-ctx.Done():
-			p.syncGroup.Done()
 			close(chPrice)
 			return
 		case price := <-chPrice:
-			p.syncGroup.Done()
 			if !position.IsOpened {
 				close(chPrice)
 				break
@@ -111,7 +101,6 @@ func (p *ClientPositions) TakeActualState(ctx context.Context, position *model.P
 				}
 			}
 		case <-p.channelsFromClose[position.ID]:
-			p.syncGroup.Done()
 			position.IsOpened = false
 			close(chPrice)
 			return
@@ -122,9 +111,6 @@ func (p *ClientPositions) TakeActualState(ctx context.Context, position *model.P
 func (p *ClientPositions) MonitorPositions() {
 	logrus.Debug("MonitorPositions")
 	for {
-		logrus.Debug("Start wait groupBlock")
-		//p.syncGroup.Wait()
-		logrus.Debug("End wait groupBlock")
 		p.rwm.Lock()
 		commonProfit := int64(0)
 		for positionElement := p.Positions.Front(); positionElement != nil; positionElement = positionElement.Next() {
@@ -151,7 +137,7 @@ func (p *ClientPositions) MonitorPositions() {
 				logrus.Warn(user, "TODO ", commonProfit)
 			}
 		}
-		p.syncGroup.Add(p.Positions.Len())
+		time.Sleep(10 * time.Millisecond)
 		p.rwm.Unlock()
 	}
 }

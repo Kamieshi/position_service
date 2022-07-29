@@ -14,7 +14,7 @@ import (
 
 // PriceStore Common Price store from all Position
 type PriceStore struct {
-	sync.RWMutex
+	rwm               sync.RWMutex
 	PricesStream      protoc.OwnPriceStreamClient
 	Companies         map[string]*model.Price
 	StreamSubscribers map[string]*StreamPriceCompany
@@ -35,32 +35,32 @@ func NewPriceStore(ctx context.Context, grpcStreamResponse protoc.OwnPriceStream
 // GetPrice Company priceStorage
 func (p *PriceStore) GetPrice(companyID string) (*model.Price, error) {
 	logrus.Debug("GetPrice priceStorage")
-	p.RLock()
+	p.rwm.RLock()
 	if data, exist := p.Companies[companyID]; exist {
-		p.RUnlock()
+		p.rwm.RUnlock()
 		return data, nil
 	}
-	p.RUnlock()
+	p.rwm.RUnlock()
 	return nil, fmt.Errorf("service_old priceStorage store /GetPrice :%v", fmt.Errorf("company {%v} not found", companyID))
 }
 
 // SetPrice Set New or Update company last priceStorage
 func (p *PriceStore) SetPrice(companyID string, pr *model.Price) {
 	logrus.Debug("SetPrice")
-	p.Lock()
+	p.rwm.Lock()
 	if _, exist := p.Companies[companyID]; !exist {
 		logrus.WithField("Company", fmt.Sprintf("%v", companyID)).Info()
 	}
 	p.Companies[companyID] = pr
-	p.Unlock()
-	p.RLock()
+	p.rwm.Unlock()
+	p.rwm.RLock()
 	_, ex := p.StreamSubscribers[companyID]
-	p.RUnlock()
+	p.rwm.RUnlock()
 	if !ex {
-		p.Lock()
-		p.StreamSubscribers[companyID] = NewSubscriber()
-		p.Unlock()
+		p.rwm.Lock()
+		p.StreamSubscribers[companyID] = NewStreamPriceCompany()
 		go p.StreamSubscribers[companyID].StartStreaming(p.CtxApp)
+		p.rwm.Unlock()
 	}
 	logrus.Debug("SetPrice SS")
 	p.StreamSubscribers[companyID].DataChan <- pr
@@ -103,14 +103,16 @@ func (p *PriceStore) ListenStream(ctx context.Context) {
 // AddSubscriber Add new subscriber to definite Company
 func (p *PriceStore) AddSubscriber(ch chan *model.Price, companyID string) {
 	logrus.Debug("AddSubscriber")
-	p.Lock()
+	p.rwm.RLock()
 	_, exist := p.StreamSubscribers[companyID]
+	p.rwm.RUnlock()
 	if !exist {
 		logrus.Debug("New Subscriber")
-		p.StreamSubscribers[companyID] = NewSubscriber()
+		p.rwm.Lock()
+		p.StreamSubscribers[companyID] = NewStreamPriceCompany()
+		p.rwm.Unlock()
 	}
 
 	p.StreamSubscribers[companyID].AddSubscriber(ch)
 	logrus.Debug("Was Added")
-	p.Unlock()
 }

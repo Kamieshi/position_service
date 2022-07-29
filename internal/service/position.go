@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/google/uuid"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
 	"github.com/Kamieshi/position_service/internal/model"
@@ -78,4 +79,34 @@ func (p *PositionService) ClosePosition(ctx context.Context, userID, positionID 
 		return fmt.Errorf("position service / ClosePosition / close position : %v", err)
 	}
 	return err
+}
+
+func (p *PositionService) WriterIntoDB(ctx context.Context, clientID uuid.UUID) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case position := <-p.ClientsPositions[clientID].BufferWriteClosePositionsInDB:
+			tx, err := p.PositionRepository.Pool.Begin(ctx)
+			if err != nil {
+				logrus.WithError(err).Error("position service / WriterIntoDB / open transaction")
+				continue
+			}
+			err = p.UserStorage.AddProfitInRepositoryTX(ctx, tx, position.Client.ID, position.Profit)
+			if err != nil {
+				logrus.WithError(err).Error("position service / WriterIntoDB / Add profit to balance")
+				continue
+			}
+
+			err = p.PositionRepository.ClosePositionTx(ctx, tx, position)
+			if err != nil {
+				logrus.WithError(err).Error("position service / WriterIntoDB / UpdatePosition")
+				continue
+			}
+			err = tx.Commit(ctx)
+			if err != nil {
+				logrus.WithError(err).Error("position service / WriterIntoDB / Commit transaction")
+			}
+		}
+	}
 }
