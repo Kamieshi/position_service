@@ -1,0 +1,29 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:latest
+    environment:
+      POSTGRES_DB: "postgres"
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "postgres"
+      POSTGRES_HOST: "postgres"
+    ports:
+      - "5432:5432"
+
+  flyway:
+    image: flyway/flyway
+    command: "migrate"
+    volumes:
+      - ./migrations:/flyway/sql
+    environment:
+      FLYWAY_CREATE_SCHEMAS: "true"
+      FLYWAY_CONNECT_RETRIES_INTERVAL: 2
+      FLYWAY_CONNECT_RETRIES: 5
+      FLYWAY_PASSWORD: "postgres"
+      FLYWAY_USER: "postgres"
+      FLYWAY_SCHEMAS: "public"
+      FLYWAY_URL: "jdbc:postgresql://postgres:5432/postgres"
+      FLYWAY_BASELINE_ON_MIGRATE: "true"
+    depends_on:
+      - postgres

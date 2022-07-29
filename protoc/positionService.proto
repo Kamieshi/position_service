@@ -1,0 +1,81 @@
+syntax = "proto3";
+option go_package = "/protoc";
+package positionService;
+
+message Price{
+  Company Company = 1;
+  uint32 Ask = 3 ;
+  uint32 Bid = 4;
+  string Time = 5;
+}
+
+message Company{
+  string ID = 1 ;
+  string Name = 2;
+}
+
+message User{
+  string ID = 1;
+  string Name = 2;
+  int64 Balance = 3;
+}
+
+service PositionsManager{
+  rpc OpenPosition(OpenPositionRequest) returns (OpenPositionResponse){}
+  rpc ClosePosition(ClosePositionRequest) returns (ClosePositionResponse){}
+}
+message OpenPositionRequest {
+  Price Price = 1;
+  string UserID = 2;
+  bool IsSales = 3;
+  bool IsFixed = 4;
+  int64 MaxProfit = 5;
+  int64 MinProfit = 6;
+  uint32 CountBuyPosition = 7;
+}
+message OpenPositionResponse{
+  string ID = 1;
+}
+
+message ClosePositionRequest{
+  string PositionID = 1;
+  Price Price = 2;
+  string UserID = 3;
+}
+message ClosePositionResponse{
+  int64 Profit = 1;
+}
+
+service UsersManager{
+  rpc GetUser(GetUserRequest) returns (GetUserResponse){}
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse){}
+  rpc AddBalance(AddBalanceRequest) returns (AddBalanceResponse){}
+  rpc GetAllUsers(GetAllUserRequest) returns (GetAllUsersResponse){}
+}
+
+
+
+message GetUserRequest{
+  string Name = 1;
+}
+message GetUserResponse{
+  User User = 1;
+}
+
+message CreateUserRequest{
+  User User = 1;
+}
+message CreateUserResponse{
+  User User = 1;
+}
+
+message AddBalanceRequest{
+  string UserID = 1;
+  int64 DifferentBalance = 2;
+}
+message AddBalanceResponse{}
+
+message GetAllUserRequest{}
+message GetAllUsersResponse{
+  repeated User Users = 1;
+}
