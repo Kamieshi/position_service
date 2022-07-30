@@ -18,7 +18,7 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// PositionsManagerClient is the client API for PositionsManager service_old.
+// PositionsManagerClient is the user API for PositionsManager service_old.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PositionsManagerClient interface {
@@ -36,7 +36,7 @@ func NewPositionsManagerClient(cc grpc.ClientConnInterface) PositionsManagerClie
 
 func (c *positionsManagerClient) OpenPosition(ctx context.Context, in *OpenPositionRequest, opts ...grpc.CallOption) (*OpenPositionResponse, error) {
 	out := new(OpenPositionResponse)
-	err := c.cc.Invoke(ctx, "/positionService.PositionsManager/OpenPosition", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/positionService.PositionsManager/Add", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +66,7 @@ type UnimplementedPositionsManagerServer struct {
 }
 
 func (UnimplementedPositionsManagerServer) OpenPosition(context.Context, *OpenPositionRequest) (*OpenPositionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method OpenPosition not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method Add not implemented")
 }
 func (UnimplementedPositionsManagerServer) ClosePosition(context.Context, *ClosePositionRequest) (*ClosePositionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method _closePosition not implemented")
@@ -94,7 +94,7 @@ func _PositionsManager_OpenPosition_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/positionService.PositionsManager/OpenPosition",
+		FullMethod: "/positionService.PositionsManager/Add",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PositionsManagerServer).OpenPosition(ctx, req.(*OpenPositionRequest))
@@ -128,7 +128,7 @@ var PositionsManager_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*PositionsManagerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "OpenPosition",
+			MethodName: "Add",
 			Handler:    _PositionsManager_OpenPosition_Handler,
 		},
 		{
@@ -140,7 +140,7 @@ var PositionsManager_ServiceDesc = grpc.ServiceDesc{
 	Metadata: "protoc/positionService.proto",
 }
 
-// UsersManagerClient is the client API for UsersManager service_old.
+// UsersManagerClient is the user API for UsersManager service_old.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UsersManagerClient interface {

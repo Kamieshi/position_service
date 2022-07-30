@@ -22,7 +22,7 @@ import (
 )
 
 func main() {
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 	conf, err := config.GetConfig()
 	if err != nil {
 		log.WithError(err).Fatal()
@@ -49,12 +49,14 @@ func main() {
 
 	prStore := priceStorage.NewPriceStore(context.Background(), clientPriceService)
 	go prStore.ListenStream(context.Background())
-	PositionService := &service.PositionService{
-		ClientsPositions:   make(map[uuid.UUID]*service.ClientPositions),
+	PositionService := &service.PositionsService{
+		UsersPositions:     make(map[uuid.UUID]*service.UserPositions),
 		PriceStorage:       prStore,
 		UserStorage:        userService,
 		PositionRepository: positionRep,
+		CtxApp:             context.Background(),
 	}
+
 	grpcServer := grpc.NewServer()
 	protoc.RegisterPositionsManagerServer(grpcServer, &handlers.PositionManagerServerImplement{PositionsManager: PositionService})
 	protoc.RegisterUsersManagerServer(grpcServer, &handlers.UsersManagerServerImplement{UserService: userService})

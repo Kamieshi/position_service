@@ -17,16 +17,16 @@ type PositionRepository struct {
 	Pool *pgxpool.Pool
 }
 
-// Insert Create new position
+// InsertTx Create new position
 func (p *PositionRepository) InsertTx(ctx context.Context, tx pgx.Tx, position *model.Position) error {
 	querySQL := `INSERT INTO positions(
-		id, client, company, ask_open, bid_open, is_opened,close_profit, time_price_open,count_buy_position,
+		id, "user", company, ask_open, bid_open, is_opened,close_profit, time_price_open,count_buy_position,
 		max_position_cost, min_position_cost, is_sales, is_fixed)
 		VALUES
 		($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`
 	cm, err := tx.Exec(ctx, querySQL,
 		position.ID,
-		position.Client.ID,
+		position.User.ID,
 		position.CompanyID,
 		position.OpenPrice.Ask,
 		position.OpenPrice.Bid,
@@ -40,10 +40,10 @@ func (p *PositionRepository) InsertTx(ctx context.Context, tx pgx.Tx, position *
 		position.IsFixes,
 	)
 	if err != nil {
-		return fmt.Errorf("repository Position/Insert : %v ", err)
+		return fmt.Errorf("repository Position/InsertTx : %v ", err)
 	}
 	if !cm.Insert() {
-		return fmt.Errorf("repository Position/Insert, incorrect data for INISERT : %v ", cm.String())
+		return fmt.Errorf("repository Position/InsertTx, incorrect data for INISERT : %v ", cm.String())
 	}
 	return nil
 }
@@ -64,14 +64,14 @@ func (p *PositionRepository) ClosePositionTx(ctx context.Context, tx pgx.Tx, pos
 // Get position from db
 func (p *PositionRepository) Get(ctx context.Context, positionID uuid.UUID) (*model.Position, error) {
 	position := model.Position{}
-	position.Client = &model.User{}
+	position.User = &model.User{}
 	position.OpenPrice = model.Price{}
 	querySQL := "SELECT " +
-		"id, client, company, ask_open, bid_open, is_opened,close_profit, time_price_open,count_buy_position, max_position_cost, min_position_cost," +
+		"id, user, company, ask_open, bid_open, is_opened,close_profit, time_price_open,count_buy_position, max_position_cost, min_position_cost," +
 		" is_sales, is_fixed FROM positions WHERE id=$1;"
 	err := p.Pool.QueryRow(ctx, querySQL, positionID).Scan(
 		&position.ID,
-		&position.Client.ID,
+		&position.User.ID,
 		&position.CompanyID,
 		&position.OpenPrice.Ask,
 		&position.OpenPrice.Bid,

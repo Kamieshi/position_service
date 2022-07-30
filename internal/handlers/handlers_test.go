@@ -25,7 +25,7 @@ var (
 	priceStorage        *prst.PriceStore
 	UserServiceClient   protoc.UsersManagerClient
 	UserRep             *repository.UserRepository
-	companyID           = "dfecfe51-f7c5-476c-bed3-6c7e11142ac7"
+	companyID           = "f414cb05-aceb-4bb3-aa12-07f028aceb21"
 )
 
 func TestMain(m *testing.M) {
@@ -92,10 +92,12 @@ func TestUnFixedBuyPosition(t *testing.T) {
 		IsFixed:          false,
 		IsSales:          false,
 	}
+	t.Log("StartOpen")
 	res, err := positionManagerUser.OpenPosition(context.Background(), openPositionRequest)
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Log(res)
 	time.Sleep(1 * time.Second)
 	price, err = priceStorage.GetPrice(companyID)
 	if err != nil {
@@ -118,7 +120,7 @@ func TestUnFixedBuyPosition(t *testing.T) {
 	if err != nil {
 		t.Error(err)
 	}
-	expectedProfit := int64(price.Bid*openPositionRequest.CountBuyPosition) - int64(openPositionRequest.Price.Bid*openPositionRequest.CountBuyPosition)
+	expectedProfit := int64(price.Bid*openPositionRequest.CountBuyPosition) - int64(openPositionRequest.Price.Ask*openPositionRequest.CountBuyPosition)
 	t.Log(expectedProfit)
 	if expectedProfit != respClosePosition.Profit {
 		t.Error("Not equal", expectedProfit, respClosePosition.Profit)
@@ -200,10 +202,11 @@ func TestFixedBuyPosition(t *testing.T) {
 		UserID:           clFromService.User.ID,
 		CountBuyPosition: 1,
 		MaxProfit:        15,
+		MinProfit:        -100,
 		IsFixed:          true,
 		IsSales:          false,
 	}
-	startBid := price.Bid
+	startAsk := price.Ask
 	res, err := positionManagerUser.OpenPosition(context.Background(), openPositionRequest)
 	if err != nil {
 		t.Fatal(err)
@@ -213,7 +216,7 @@ func TestFixedBuyPosition(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if price.Bid-startBid > 15 {
+		if price.Bid-startAsk > 15 {
 			break
 		}
 	}
@@ -246,7 +249,7 @@ func TestAddBalance(t *testing.T) {
 
 func TestManyUsersOpenPosition(t *testing.T) {
 	countUsers := 10
-	countPosition := 10
+	countPosition := 290
 	users := make([]*model.User, 0, countUsers)
 	for i := 0; i < countUsers; i++ {
 		users = append(users, &model.User{
@@ -298,35 +301,35 @@ func TestManyUsersOpenPosition(t *testing.T) {
 		}
 	}
 	time.Sleep(2 * time.Second)
-	for req, res := range reqResp {
-		t_resp := time.Now()
-		price, err := priceStorage.GetPrice(companyID)
-		if err != nil {
-			t.Fatal(err)
-		}
-		closePositionRequest := &protoc.ClosePositionRequest{
-			PositionID: res.ID,
-			Price: &protoc.Price{
-				Company: &protoc.Company{
-					ID:   companyID,
-					Name: "Company name",
-				},
-				Ask:  price.Ask,
-				Bid:  price.Bid,
-				Time: price.Time.Format("2006-01-02T15:04:05.000TZ-07:00"),
-			},
-			UserID: req.UserID,
-		}
-
-		respClosePosition, err := positionManagerUser.ClosePosition(context.Background(), closePositionRequest)
-		if err != nil {
-			t.Error(err)
-		}
-		expectedProfit := int64(price.Bid*req.CountBuyPosition) - int64(req.Price.Bid*req.CountBuyPosition)
-		if expectedProfit != respClosePosition.Profit {
-			t.Error("Not equal", expectedProfit, respClosePosition.Profit,
-				"Time before get priceStorage -> resp : ", time.Since(t_resp),
-				"Time priceStorage delay : ", time.Since(price.Time))
-		}
-	}
+	//for req, res := range reqResp {
+	//	t_resp := time.Now()
+	//	price, err := priceStorage.GetPrice(companyID)
+	//	if err != nil {
+	//		t.Fatal(err)
+	//	}
+	//	closePositionRequest := &protoc.ClosePositionRequest{
+	//		PositionID: res.ID,
+	//		Price: &protoc.Price{
+	//			Company: &protoc.Company{
+	//				ID:   companyID,
+	//				Name: "Company name",
+	//			},
+	//			Ask:  price.Ask,
+	//			Bid:  price.Bid,
+	//			Time: price.Time.Format("2006-01-02T15:04:05.000TZ-07:00"),
+	//		},
+	//		UserID: req.UserID,
+	//	}
+	//
+	//	respClosePosition, err := positionManagerUser.Close(context.Background(), closePositionRequest)
+	//	if err != nil {
+	//		t.Error(err)
+	//	}
+	//	expectedProfit := int64(price.Bid*req.CountBuyPosition) - int64(req.Price.Ask*req.CountBuyPosition)
+	//	if expectedProfit != respClosePosition.Profit {
+	//		t.Error("Not equal", expectedProfit, respClosePosition.Profit,
+	//			"Time before get priceStorage -> resp : ", time.Since(t_resp),
+	//			"Time priceStorage delay : ", time.Since(price.Time))
+	//	}
+	//}
 }

@@ -46,7 +46,6 @@ func (p *PriceStore) GetPrice(companyID string) (*model.Price, error) {
 
 // SetPrice Set New or Update company last priceStorage
 func (p *PriceStore) SetPrice(companyID string, pr *model.Price) {
-	logrus.Debug("SetPrice")
 	p.rwm.Lock()
 	if _, exist := p.Companies[companyID]; !exist {
 		logrus.WithField("Company", fmt.Sprintf("%v", companyID)).Info()
@@ -62,14 +61,13 @@ func (p *PriceStore) SetPrice(companyID string, pr *model.Price) {
 		go p.StreamSubscribers[companyID].StartStreaming(p.CtxApp)
 		p.rwm.Unlock()
 	}
-	logrus.Debug("SetPrice SS")
 	p.StreamSubscribers[companyID].DataChan <- pr
-	logrus.Debug("SetPrice SSS")
+	logrus.Debug("Price For company ", companyID, " was updated. Current Delay ", time.Since(pr.Time))
 }
 
 // ListenStream Goroutine from save Price store in consistent state with Redis Stream
 func (p *PriceStore) ListenStream(ctx context.Context) {
-	logrus.Debug("Start listening from GRPC")
+	logrus.Debug("Start to listen stream from GRPC")
 	stream, err := p.PricesStream.GetPriceStream(ctx, &protoc.GetPriceStreamRequest{})
 	if err != nil {
 		logrus.WithError(err).Error("Start listen priceStorage stream")
@@ -82,7 +80,6 @@ func (p *PriceStore) ListenStream(ctx context.Context) {
 			return
 		default:
 			data, err := stream.Recv()
-			logrus.Debug("Get data from GRPC riceStorage")
 			if err != nil {
 				logrus.WithError(err).Error("service_old priceStorage store/ListenStream stream.Recv()")
 			}
@@ -102,17 +99,15 @@ func (p *PriceStore) ListenStream(ctx context.Context) {
 
 // AddSubscriber Add new subscriber to definite Company
 func (p *PriceStore) AddSubscriber(ch chan *model.Price, companyID string) {
-	logrus.Debug("AddSubscriber")
+	logrus.Debug("AddSubscriber fot company ", companyID)
 	p.rwm.RLock()
 	_, exist := p.StreamSubscribers[companyID]
 	p.rwm.RUnlock()
 	if !exist {
-		logrus.Debug("New Subscriber")
+		logrus.Debug("New Subscriber for company ", companyID)
 		p.rwm.Lock()
 		p.StreamSubscribers[companyID] = NewStreamPriceCompany()
 		p.rwm.Unlock()
 	}
-
 	p.StreamSubscribers[companyID].AddSubscriber(ch)
-	logrus.Debug("Was Added")
 }

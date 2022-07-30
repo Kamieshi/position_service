@@ -1,4 +1,4 @@
-CREATE TABLE clients
+CREATE TABLE users
 (
     id      uuid,
     name    varchar(255) not null unique,
@@ -9,7 +9,7 @@ CREATE TABLE clients
 CREATE TABLE positions
 (
     id                 uuid,
-    client             uuid   not null,
+    "user"               uuid   not null,
     company            uuid   not null,
     ask_open           bigint not null,
     bid_open           bigint not null,
@@ -22,5 +22,5 @@ CREATE TABLE positions
     is_sales           bool   not null,
     is_fixed           bool   not null,
     PRIMARY KEY (id),
-    FOREIGN KEY (client) REFERENCES clients (id)
+    FOREIGN KEY ("user") REFERENCES users (id)
 );

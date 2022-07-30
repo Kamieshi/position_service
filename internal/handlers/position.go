@@ -14,7 +14,7 @@ import (
 
 // PositionManagerServerImplement Implement PositionManagerServer
 type PositionManagerServerImplement struct {
-	PositionsManager *service.PositionService
+	PositionsManager *service.PositionsService
 	protoc.PositionsManagerServer
 }
 
@@ -23,12 +23,12 @@ func (p *PositionManagerServerImplement) OpenPosition(ctx context.Context, req *
 	log.Debug("Handler Open Position", req)
 	clientID, err := uuid.Parse(req.UserID)
 	if err != nil {
-		log.WithError(err).Error("OpenPosition handler PositionManagerServer Parse ID")
+		log.WithError(err).Error("Add handler PositionManagerServer Parse ID")
 		return &protoc.OpenPositionResponse{}, err
 	}
 	timeIn, err := time.Parse("2006-01-02T15:04:05.000TZ-07:00", req.Price.Time)
 	if err != nil {
-		log.WithError(err).Error("OpenPosition handler PositionManagerServer Parse Time")
+		log.WithError(err).Error("Add handler PositionManagerServer Parse Time")
 		return &protoc.OpenPositionResponse{}, err
 	}
 	price := model.Price{
@@ -38,7 +38,7 @@ func (p *PositionManagerServerImplement) OpenPosition(ctx context.Context, req *
 	}
 
 	position := &model.Position{
-		Client: &model.User{
+		User: &model.User{
 			ID: clientID,
 		},
 		CompanyID:        req.Price.Company.ID,
@@ -52,7 +52,7 @@ func (p *PositionManagerServerImplement) OpenPosition(ctx context.Context, req *
 
 	err = p.PositionsManager.OpenPosition(ctx, position)
 	if err != nil {
-		log.WithError(err).Error("OpenPosition handler PositionManagerServer OpenPosition")
+		log.WithError(err).Error("Add handler PositionManagerServer Add")
 		return &protoc.OpenPositionResponse{
 			ID: "",
 		}, err
@@ -76,13 +76,13 @@ func (p *PositionManagerServerImplement) ClosePosition(ctx context.Context, req 
 		return &protoc.ClosePositionResponse{}, err
 	}
 
-	err = p.PositionsManager.ClosePosition(ctx, positionID, clientID)
+	position, err := p.PositionsManager.ClosePosition(ctx, clientID, positionID)
 	if err != nil {
 		log.WithError(err).Error("_closePosition handler PositionManagerServer Close Position")
 		return &protoc.ClosePositionResponse{}, err
 	}
 
 	return &protoc.ClosePositionResponse{
-		Profit: 0,
+		Profit: position.Profit,
 	}, nil
 }

@@ -981,13 +981,13 @@ var file_protoc_positionService_proto_depIdxs = []int32{
 	2,  // 4: positionService.CreateUserRequest.User:type_name -> positionService.User
 	2,  // 5: positionService.CreateUserResponse.User:type_name -> positionService.User
 	2,  // 6: positionService.GetAllUsersResponse.Users:type_name -> positionService.User
-	3,  // 7: positionService.PositionsManager.OpenPosition:input_type -> positionService.OpenPositionRequest
+	3,  // 7: positionService.PositionsManager.Add:input_type -> positionService.OpenPositionRequest
 	5,  // 8: positionService.PositionsManager._closePosition:input_type -> positionService.ClosePositionRequest
 	7,  // 9: positionService.UsersManager.GetUser:input_type -> positionService.GetUserRequest
 	9,  // 10: positionService.UsersManager.CreateUser:input_type -> positionService.CreateUserRequest
 	11, // 11: positionService.UsersManager.AddBalance:input_type -> positionService.AddBalanceRequest
 	13, // 12: positionService.UsersManager.GetAllUsers:input_type -> positionService.GetAllUserRequest
-	4,  // 13: positionService.PositionsManager.OpenPosition:output_type -> positionService.OpenPositionResponse
+	4,  // 13: positionService.PositionsManager.Add:output_type -> positionService.OpenPositionResponse
 	6,  // 14: positionService.PositionsManager._closePosition:output_type -> positionService.ClosePositionResponse
 	8,  // 15: positionService.UsersManager.GetUser:output_type -> positionService.GetUserResponse
 	10, // 16: positionService.UsersManager.CreateUser:output_type -> positionService.CreateUserResponse

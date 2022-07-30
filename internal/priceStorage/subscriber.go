@@ -32,7 +32,7 @@ func NewStreamPriceCompany() *StreamPriceCompany {
 func (s *StreamPriceCompany) AddSubscriber(chTo chan *model.Price) {
 	s.rwm.Lock()
 	s.Subscribers.PushBack(chTo)
-	s.rwm.Lock()
+	s.rwm.Unlock()
 }
 
 // StartStreaming goroutine from listen chanel update end stream to other channels subscribers
@@ -43,30 +43,32 @@ func (s *StreamPriceCompany) StartStreaming(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case pr := <-s.DataChan:
-			log.Debug("Get Data from Chanal")
+			s.rwm.RLock()
 			if s.Subscribers.Len() > 0 {
-				log.Debug("Get Data from Chanal LEN > 0")
+				s.rwm.RUnlock()
 				tt := time.Now()
+				s.rwm.Lock()
 				for chElem := s.Subscribers.Front(); chElem != nil; chElem = chElem.Next() {
-					log.Debug("Send to chanel ", chElem.Value)
 					select {
 					case _, op := <-chElem.Value.(chan *model.Price):
-						log.Debug("Closed Chanel")
+						log.Debug("Chanel was deleted")
 						if chElem.Next() != nil {
 							chElem = chElem.Next()
 							s.Subscribers.Remove(chElem.Prev())
 							continue
 						}
 						s.Subscribers.Remove(chElem)
+
 						_ = op
 					default:
-						log.Debug("Ch S")
 						chElem.Value.(chan *model.Price) <- pr
-						log.Debug("Ch D")
 					}
 				}
+				s.rwm.Unlock()
 				log.Info(time.Since(tt), " Count Position : ", s.Subscribers.Len())
+				continue
 			}
+			s.rwm.RUnlock()
 		}
 	}
 }

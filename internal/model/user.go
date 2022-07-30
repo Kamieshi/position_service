@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-// User model client
+// User model user
 type User struct {
 	ID      uuid.UUID `db:"id"`
 	Name    string    `db:"name"`
@@ -22,16 +22,16 @@ func (c *User) ToString() string {
 	return fmt.Sprintf("%s|%s|%d", c.ID, c.Name, c.Balance)
 }
 
-// ClientFromString input format "c.ID|c.Name|c.Balance"
-func UserFromString(strClient string) (*User, error) {
-	data := strings.Split(strClient, "|")
+// UserFromString input format "c.ID|c.Name|c.Balance"
+func UserFromString(strUser string) (*User, error) {
+	data := strings.Split(strUser, "|")
 	id, err := uuid.Parse(data[0])
 	if err != nil {
-		return nil, fmt.Errorf("mdoels client / FromString error parse : %v", err)
+		return nil, fmt.Errorf("mdoels user / FromString error parse : %v", err)
 	}
 	balance, err := strconv.Atoi(data[2])
 	if err != nil {
-		return nil, fmt.Errorf("mdoels client / FromString error parse : %v", err)
+		return nil, fmt.Errorf("mdoels user / FromString error parse : %v", err)
 	}
 	return &User{
 		ID:      id,
