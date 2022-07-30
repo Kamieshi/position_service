@@ -50,7 +50,7 @@ func (c *UserRepository) Delete(ctx context.Context, clientID uuid.UUID) error {
 	querySQL := "DELETE FROM users WHERE id=$1"
 	cm, err := c.Pool.Exec(ctx, querySQL, clientID)
 	if err != nil {
-		return fmt.Errorf("repository user/Delete : %v ", err)
+		return fmt.Errorf("repository user/delete : %v ", err)
 	}
 	if !cm.Delete() {
 		log.Errorf("User %s was delete", clientID.String())

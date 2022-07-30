@@ -249,7 +249,7 @@ func TestAddBalance(t *testing.T) {
 
 func TestManyUsersOpenPosition(t *testing.T) {
 	countUsers := 10
-	countPosition := 290
+	countPosition := 1000
 	users := make([]*model.User, 0, countUsers)
 	for i := 0; i < countUsers; i++ {
 		users = append(users, &model.User{

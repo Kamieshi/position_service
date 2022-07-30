@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"fmt"
 	"sync"
 
 	"github.com/Kamieshi/position_service/internal/model"
@@ -14,17 +15,17 @@ type Position struct {
 	rwm         sync.RWMutex
 }
 
-func (p *Position) TakeActualState(ctx context.Context, chPrice chan *model.Price) {
+func (p *Position) StartTakeActualState(ctx context.Context, chPrice chan *model.Price) {
 	logrus.Debug("TakeActualState for position : ", p.position.ID)
+	p.rwm.Lock()
+	p.position.IsOpened = true
+	p.rwm.Unlock()
 	for {
 		select {
 		case <-ctx.Done():
 			close(chPrice)
 			return
 		case <-p.chFromClose:
-			p.rwm.Lock()
-			p.position.IsOpened = false
-			p.rwm.Unlock()
 			close(chPrice)
 			return
 		case price := <-chPrice:
@@ -54,6 +55,16 @@ func (p *Position) TakeActualState(ctx context.Context, chPrice chan *model.Pric
 	}
 }
 
-func (p *Position) Close() {
+func (p *Position) StopTakeActualState() error {
 	p.chFromClose <- true
+	select {
+	case _, op := <-p.chFromClose:
+		if !op {
+			p.rwm.Lock()
+			p.position.IsOpened = false
+			p.rwm.Unlock()
+			return nil
+		}
+	}
+	return fmt.Errorf("position / StopTakeActualState / touble with close chanen from error")
 }

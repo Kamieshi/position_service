@@ -2,7 +2,6 @@ package service
 
 import (
 	"container/list"
-	"errors"
 	"fmt"
 	"sync"
 	"time"
@@ -49,7 +48,7 @@ func (p *UserPositions) Add(ctx context.Context, position *model.Position, chPri
 	}
 	p.PositionsMap[position.ID] = positionSync
 	p.Positions.PushBack(position)
-	go p.PositionsMap[position.ID].TakeActualState(ctx, chPrice)
+	go p.PositionsMap[position.ID].StartTakeActualState(ctx, chPrice)
 	p.rwm.Unlock()
 	return nil
 }
@@ -61,10 +60,18 @@ func (p *UserPositions) Close(position *model.Position) error {
 		return fmt.Errorf("user position / Close / add profit: %v", err)
 	}
 	close(p.PositionsMap[position.ID].chFromClose)
-	delete(p.PositionsMap, position.ID)
-	p.BufferWriteClosePositionsInDB <- position
+	p.delete(position)
+	p.writeInRepository(position)
 	logrus.Debugf("Position %s was closed, profit %d")
 	return nil
+}
+
+func (p *UserPositions) delete(position *model.Position) {
+	delete(p.PositionsMap, position.ID)
+}
+
+func (p *UserPositions) writeInRepository(position *model.Position) {
+	p.BufferWriteClosePositionsInDB <- position
 }
 
 func (p *UserPositions) CloseByID(positionID uuid.UUID) (*model.Position, error) {
@@ -73,15 +80,11 @@ func (p *UserPositions) CloseByID(positionID uuid.UUID) (*model.Position, error)
 		return nil, fmt.Errorf("user positions/ CloseByID / Position with ID %s not exist ", positionID)
 	}
 	position := p.PositionsMap[positionID]
-	position.Close()
-	select {
-	case _, op := <-position.chFromClose:
-		if !op {
-			return position.position, nil
-		}
-	case <-time.After(1 * time.Second):
+	err := position.StopTakeActualState()
+	if err != nil {
+		return nil, err
 	}
-	return nil, errors.New("user positions/ CloseByID  / Time out ")
+	return position.position, nil
 
 }
 
