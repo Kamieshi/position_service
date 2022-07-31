@@ -48,7 +48,7 @@ func (p *PositionRepository) InsertTx(ctx context.Context, tx pgx.Tx, position *
 	return nil
 }
 
-// ClosePositionTx Close current position. Add exec into transaction
+// ClosePositionTx FixedClosedPosition current position. Add exec into transaction
 func (p *PositionRepository) ClosePositionTx(ctx context.Context, tx pgx.Tx, position *model.Position) error {
 	querySQL := "UPDATE positions SET is_opened=$1 , close_profit=$2 WHERE id =$3"
 	cm, err := tx.Exec(ctx, querySQL, position.IsOpened, position.Profit, position.ID)

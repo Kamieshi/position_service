@@ -20,7 +20,7 @@ type PositionManagerServerImplement struct {
 
 // OpenPosition Open new position
 func (p *PositionManagerServerImplement) OpenPosition(ctx context.Context, req *protoc.OpenPositionRequest) (*protoc.OpenPositionResponse, error) {
-	log.Debug("Handler Open Position", req)
+	log.Debug("Handler Open ActivePosition", req)
 	clientID, err := uuid.Parse(req.UserID)
 	if err != nil {
 		log.WithError(err).Error("Add handler PositionManagerServer Parse ID")
@@ -62,9 +62,9 @@ func (p *PositionManagerServerImplement) OpenPosition(ctx context.Context, req *
 	}, err
 }
 
-// ClosePosition Close position
+// ClosePosition FixedClosedPosition position
 func (p *PositionManagerServerImplement) ClosePosition(ctx context.Context, req *protoc.ClosePositionRequest) (*protoc.ClosePositionResponse, error) {
-	log.Debug("Handler Close Position", req)
+	log.Debug("Handler FixedClosedPosition ActivePosition", req)
 	positionID, err := uuid.Parse(req.PositionID)
 	if err != nil {
 		log.WithError(err).Error("_closePosition handler PositionManagerServer Parse ID")
@@ -78,7 +78,7 @@ func (p *PositionManagerServerImplement) ClosePosition(ctx context.Context, req 
 
 	position, err := p.PositionsManager.ClosePosition(ctx, clientID, positionID)
 	if err != nil {
-		log.WithError(err).Error("_closePosition handler PositionManagerServer Close Position")
+		log.WithError(err).Error("_closePosition handler PositionManagerServer FixedClosedPosition ActivePosition")
 		return &protoc.ClosePositionResponse{}, err
 	}
 

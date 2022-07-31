@@ -25,7 +25,10 @@ var (
 	priceStorage        *prst.PriceStore
 	UserServiceClient   protoc.UsersManagerClient
 	UserRep             *repository.UserRepository
-	companyID           = "f414cb05-aceb-4bb3-aa12-07f028aceb21"
+	companyID1          = "a1613fb7-05c4-41bd-9a95-64e1cbdb5518"
+	companies           = []string{
+		"a1613fb7-05c4-41bd-9a95-64e1cbdb5518",
+	}
 )
 
 func TestMain(m *testing.M) {
@@ -73,14 +76,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestUnFixedBuyPosition(t *testing.T) {
-	price, err := priceStorage.GetPrice(companyID)
+	price, err := priceStorage.GetPrice(companyID1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	openPositionRequest := &protoc.OpenPositionRequest{
 		Price: &protoc.Price{
 			Company: &protoc.Company{
-				ID:   companyID,
+				ID:   companyID1,
 				Name: "Company name",
 			},
 			Ask:  price.Ask,
@@ -99,7 +102,7 @@ func TestUnFixedBuyPosition(t *testing.T) {
 	}
 	t.Log(res)
 	time.Sleep(1 * time.Second)
-	price, err = priceStorage.GetPrice(companyID)
+	price, err = priceStorage.GetPrice(companyID1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +110,7 @@ func TestUnFixedBuyPosition(t *testing.T) {
 		PositionID: res.ID,
 		Price: &protoc.Price{
 			Company: &protoc.Company{
-				ID:   companyID,
+				ID:   companyID1,
 				Name: "Company name",
 			},
 			Ask:  price.Ask,
@@ -129,14 +132,14 @@ func TestUnFixedBuyPosition(t *testing.T) {
 }
 
 func TestUnFixedSalePosition(t *testing.T) {
-	price, err := priceStorage.GetPrice(companyID)
+	price, err := priceStorage.GetPrice(companyID1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	openPositionRequest := &protoc.OpenPositionRequest{
 		Price: &protoc.Price{
 			Company: &protoc.Company{
-				ID:   companyID,
+				ID:   companyID1,
 				Name: "Company name",
 			},
 			Ask:  price.Ask,
@@ -153,7 +156,7 @@ func TestUnFixedSalePosition(t *testing.T) {
 		t.Fatal(err)
 	}
 	time.Sleep(2 * time.Second)
-	price, err = priceStorage.GetPrice(companyID)
+	price, err = priceStorage.GetPrice(companyID1)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +165,7 @@ func TestUnFixedSalePosition(t *testing.T) {
 		PositionID: res.ID,
 		Price: &protoc.Price{
 			Company: &protoc.Company{
-				ID:   companyID,
+				ID:   companyID1,
 				Name: "Company name",
 			},
 			Ask:  price.Ask,
@@ -185,14 +188,14 @@ func TestUnFixedSalePosition(t *testing.T) {
 }
 
 func TestFixedBuyPosition(t *testing.T) {
-	price, err := priceStorage.GetPrice(companyID)
+	price, err := priceStorage.GetPrice(companyID1)
 	if err != nil {
 		t.Fatal(err)
 	}
 	openPositionRequest := &protoc.OpenPositionRequest{
 		Price: &protoc.Price{
 			Company: &protoc.Company{
-				ID:   companyID,
+				ID:   companyID1,
 				Name: "Company name",
 			},
 			Ask:  price.Ask,
@@ -212,7 +215,7 @@ func TestFixedBuyPosition(t *testing.T) {
 		t.Fatal(err)
 	}
 	for {
-		price, err = priceStorage.GetPrice(companyID)
+		price, err = priceStorage.GetPrice(companyID1)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -225,7 +228,7 @@ func TestFixedBuyPosition(t *testing.T) {
 		log.WithError(err).Fatal()
 	}
 	var r bool
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(5 * time.Second)
 	err = pool.QueryRow(context.Background(), "SELECT is_opened FROM positions WHERE id=$1", res.ID).Scan(&r)
 	if err != nil {
 		t.Fatal(err)
@@ -249,7 +252,8 @@ func TestAddBalance(t *testing.T) {
 
 func TestManyUsersOpenPosition(t *testing.T) {
 	countUsers := 10
-	countPosition := 1000
+	countPosition := 1
+
 	users := make([]*model.User, 0, countUsers)
 	for i := 0; i < countUsers; i++ {
 		users = append(users, &model.User{
@@ -272,64 +276,67 @@ func TestManyUsersOpenPosition(t *testing.T) {
 	reqResp := make(map[*protoc.OpenPositionRequest]*protoc.OpenPositionResponse)
 	for _, user := range users {
 		for i := 0; i < countPosition; i++ {
-			price, err := priceStorage.GetPrice(companyID)
-			if err != nil {
-				t.Fatal(err)
-			}
-			openPositionRequest := &protoc.OpenPositionRequest{
-				Price: &protoc.Price{
-					Company: &protoc.Company{
-						ID:   companyID,
-						Name: "Company name",
+			for _, companyID := range companies {
+
+				price, err := priceStorage.GetPrice(companyID)
+				if err != nil {
+					t.Fatal(err)
+				}
+				openPositionRequest := &protoc.OpenPositionRequest{
+					Price: &protoc.Price{
+						Company: &protoc.Company{
+							ID:   companyID,
+							Name: "Company name",
+						},
+						Ask:  price.Ask,
+						Bid:  price.Bid,
+						Time: price.Time.Format("2006-01-02T15:04:05.000TZ-07:00"),
 					},
-					Ask:  price.Ask,
-					Bid:  price.Bid,
-					Time: price.Time.Format("2006-01-02T15:04:05.000TZ-07:00"),
-				},
-				UserID:           user.ID.String(),
-				CountBuyPosition: 1,
-				IsFixed:          false,
-				IsSales:          false,
+					UserID:           user.ID.String(),
+					CountBuyPosition: 1,
+					IsFixed:          false,
+					IsSales:          false,
+				}
+				res, err := positionManagerUser.OpenPosition(context.Background(), openPositionRequest)
+				if err != nil {
+					t.Error(err, " ", time.Since(price.Time))
+					i--
+					continue
+				}
+				reqResp[openPositionRequest] = res
 			}
-			res, err := positionManagerUser.OpenPosition(context.Background(), openPositionRequest)
-			if err != nil {
-				t.Error(err, " ", time.Since(price.Time))
-				i--
-				continue
-			}
-			reqResp[openPositionRequest] = res
 		}
 	}
 	time.Sleep(2 * time.Second)
-	//for req, res := range reqResp {
-	//	t_resp := time.Now()
-	//	price, err := priceStorage.GetPrice(companyID)
-	//	if err != nil {
-	//		t.Fatal(err)
-	//	}
-	//	closePositionRequest := &protoc.ClosePositionRequest{
-	//		PositionID: res.ID,
-	//		Price: &protoc.Price{
-	//			Company: &protoc.Company{
-	//				ID:   companyID,
-	//				Name: "Company name",
-	//			},
-	//			Ask:  price.Ask,
-	//			Bid:  price.Bid,
-	//			Time: price.Time.Format("2006-01-02T15:04:05.000TZ-07:00"),
-	//		},
-	//		UserID: req.UserID,
-	//	}
-	//
-	//	respClosePosition, err := positionManagerUser.Close(context.Background(), closePositionRequest)
-	//	if err != nil {
-	//		t.Error(err)
-	//	}
-	//	expectedProfit := int64(price.Bid*req.CountBuyPosition) - int64(req.Price.Ask*req.CountBuyPosition)
-	//	if expectedProfit != respClosePosition.Profit {
-	//		t.Error("Not equal", expectedProfit, respClosePosition.Profit,
-	//			"Time before get priceStorage -> resp : ", time.Since(t_resp),
-	//			"Time priceStorage delay : ", time.Since(price.Time))
-	//	}
-	//}
+	for req, res := range reqResp {
+		t_resp := time.Now()
+		price, err := priceStorage.GetPrice(companyID1)
+		if err != nil {
+			t.Fatal(err)
+		}
+		closePositionRequest := &protoc.ClosePositionRequest{
+			PositionID: res.ID,
+			Price: &protoc.Price{
+				Company: &protoc.Company{
+					ID:   companyID1,
+					Name: "Company name",
+				},
+				Ask:  price.Ask,
+				Bid:  price.Bid,
+				Time: price.Time.Format("2006-01-02T15:04:05.000TZ-07:00"),
+			},
+			UserID: req.UserID,
+		}
+
+		respClosePosition, err := positionManagerUser.ClosePosition(context.Background(), closePositionRequest)
+		if err != nil {
+			t.Error(err)
+		}
+		expectedProfit := int64(price.Bid*req.CountBuyPosition) - int64(req.Price.Ask*req.CountBuyPosition)
+		if expectedProfit != respClosePosition.Profit {
+			t.Error("Not equal", expectedProfit, respClosePosition.Profit,
+				"Time before get priceStorage -> resp : ", time.Since(t_resp),
+				"Time priceStorage delay : ", time.Since(price.Time))
+		}
+	}
 }

@@ -22,7 +22,7 @@ import (
 )
 
 func main() {
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 	conf, err := config.GetConfig()
 	if err != nil {
 		log.WithError(err).Fatal()
@@ -60,9 +60,9 @@ func main() {
 	grpcServer := grpc.NewServer()
 	protoc.RegisterPositionsManagerServer(grpcServer, &handlers.PositionManagerServerImplement{PositionsManager: PositionService})
 	protoc.RegisterUsersManagerServer(grpcServer, &handlers.UsersManagerServerImplement{UserService: userService})
-	log.Info("gRPC Position service_old server start")
+	log.Info("gRPC ActivePosition service_old server start")
 	log.Info("Count core : ", runtime.NumCPU())
 	log.Info("Addr Listen: ", conf.GetConnStringToPositionService())
 	log.Info(grpcServer.Serve(listener))
-	log.Info("gRPC Position service_old  server Stop")
+	log.Info("gRPC ActivePosition service_old  server Stop")
 }

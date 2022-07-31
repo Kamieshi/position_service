@@ -23,73 +23,58 @@ type PositionsService struct {
 	rwm                sync.RWMutex
 }
 
+const actualState = true
+const enoughForOpenPosition = true
+
+// OpenPosition open position
 func (p *PositionsService) OpenPosition(ctx context.Context, position *model.Position) error {
-	currentPrice, err := p.PriceStorage.GetPrice(position.CompanyID)
-	if err != nil {
-		return fmt.Errorf("service position / Add / Try get current price from PriceStorage : %v ", err)
+	logrus.Debug("Position service / OpenPosition ")
+	if state, err := p.checkActualOpenedPriceState(position); err != nil {
+		return fmt.Errorf("service position / OpenPosition / Error get actualState price : %v ", err)
+	} else {
+		if state != actualState {
+			return fmt.Errorf("service position / OpenPosition / Opened price isn't actual ")
+		}
 	}
 
-	if currentPrice.Bid != position.OpenPrice.Bid {
-		return fmt.Errorf("service position / Add / Not actual BID : %v ", err)
+	if enough, err := p.checkEnoughBalanceUser(ctx, position); err != nil {
+		return fmt.Errorf("service position / OpenPosition / try check user balance : %v ", err)
+	} else {
+		if enough != enoughForOpenPosition {
+			return fmt.Errorf("service position / OpenPosition / Isn't enough monay for open position")
+		}
 	}
 
-	user, err := p.UserStorage.Get(ctx, position.User.ID)
-	if err != nil {
-		return fmt.Errorf("service position / Add / Try get user : %v ", err)
+	if !p.userPositionsIsExist(position.User.ID) {
+		p.addNewUserPositions(position.User.ID)
 	}
 
-	if int64(position.OpenPrice.Ask*position.CountBuyPosition) > user.Balance {
-		return fmt.Errorf("service position / Add / Don't have money : %d  >  %d",
-			int64(position.OpenPrice.Ask*position.CountBuyPosition),
-			user.Balance,
-		)
-	}
+	activePosition := NewActiveOpenedPosition(position)
 
-	_, exist := p.UsersPositions[user.ID]
-	if !exist {
-		p.rwm.Lock()
-		p.UsersPositions[user.ID] = NewUserPositions(p.UserStorage)
-		p.rwm.Unlock()
-		go p.UsersPositions[user.ID].FixedClosed()
-		go p.UsersPositions[user.ID].CheckSummaryProfit()
-		go p.WriteClosedPositions(p.CtxApp, user.ID)
+	if err := p.addToUserPositions(activePosition); err != nil {
+		return fmt.Errorf("service position / OpenPosition / add active position to user activePositions : %v ", err)
 	}
-
-	position.ID = uuid.New()
-	tx, err := p.PositionRepository.Pool.Begin(ctx)
-	if err != nil {
-		return fmt.Errorf("PositionManager service_old/ Add / get tx from pool : %v", err)
+	if err := p.writeToDB(activePosition); err != nil {
+		return fmt.Errorf("service position / OpenPosition / write position to DB: %v ", err)
 	}
-
-	position.IsOpened = true
-	err = p.PositionRepository.InsertTx(ctx, tx, position)
-	if err != nil {
-		return fmt.Errorf("service position / Add / Insert to position into DB : %v ", err)
-	}
-	chData := make(chan *model.Price)
-	err = p.UsersPositions[user.ID].Add(p.PriceStorage.CtxApp, position, chData)
-	if err != nil {
-		return fmt.Errorf("service position / Add / Try open position : %v ", err)
-	}
-	p.PriceStorage.AddSubscriber(chData, position.CompanyID)
-	err = tx.Commit(ctx)
-	if err != nil {
-		return fmt.Errorf("PositionManager service_old / Add / commit transaction : %v", err)
-	}
+	p.startTakeActualStateAndAddSubscriber(activePosition)
 	return nil
 }
 
+// ClosePosition close position
 func (p *PositionsService) ClosePosition(ctx context.Context, userID, positionID uuid.UUID) (*model.Position, error) {
-	if _, exist := p.UsersPositions[userID]; !exist {
-		return nil, fmt.Errorf("Position service / CloasePosition / user %s not exist ")
+	logrus.Debug("Position service / ClosePosition ")
+	if !p.userPositionsIsExist(userID) {
+		return nil, fmt.Errorf("ActivePosition service / CloasePosition / user %s not exist ")
 	}
-	position, err := p.UsersPositions[userID].CloseByID(positionID)
+	position, err := p.closePositionForUser(userID, positionID)
 	if err != nil {
-		return nil, fmt.Errorf("position service / Close / close position : %v", err)
+		return nil, fmt.Errorf("position service / FixedClosedPosition / close position : %v", err)
 	}
 	return position, nil
 }
 
+// WriteClosedPositions G for write closed position in db from buffer closed position
 func (p *PositionsService) WriteClosedPositions(ctx context.Context, userID uuid.UUID) {
 	logrus.Debugf("Start WriteClosedPositions for user %v", userID)
 	p.rwm.RLock()
@@ -122,4 +107,83 @@ func (p *PositionsService) WriteClosedPositions(ctx context.Context, userID uuid
 			}
 		}
 	}
+}
+
+func (p *PositionsService) userPositionsIsExist(userID uuid.UUID) bool {
+	if _, exist := p.UsersPositions[userID]; !exist {
+		return false
+	}
+	return true
+}
+
+func (p *PositionsService) closePositionForUser(userID uuid.UUID, positionID uuid.UUID) (*model.Position, error) {
+	position, err := p.UsersPositions[userID].CloseByID(positionID)
+	if err != nil {
+		return nil, fmt.Errorf("position service / closePositionForUser / close position : %v", err)
+	}
+	return position, nil
+}
+
+func (p *PositionsService) checkActualOpenedPriceState(position *model.Position) (bool, error) {
+	currentPrice, err := p.PriceStorage.GetPrice(position.CompanyID)
+	if err != nil {
+		return false, fmt.Errorf("service position / Add / Try get current price from PriceStorage : %v ", err)
+	}
+	if currentPrice.Bid != position.OpenPrice.Bid {
+		return false, nil
+	}
+	return actualState, nil
+}
+
+func (p *PositionsService) checkEnoughBalanceUser(ctx context.Context, position *model.Position) (bool, error) {
+	user, err := p.UserStorage.Get(ctx, position.User.ID)
+	if err != nil {
+		return false, fmt.Errorf("service position / checkEnoughBalanceUser / Try get user : %v ", err)
+	}
+	if int64(position.OpenPrice.Ask*position.CountBuyPosition) > user.Balance {
+		return false, nil
+	}
+	return true, nil
+
+}
+
+func (p *PositionsService) addNewUserPositions(userID uuid.UUID) {
+	p.rwm.Lock()
+	p.UsersPositions[userID] = NewUserPositions(p.UserStorage)
+	p.rwm.Unlock()
+	go p.UsersPositions[userID].FixedClosedActivePositions()
+	go p.UsersPositions[userID].CheckSummaryProfitAndAutoCloseMostNegativePositionWhenCommonProfitBecameNegative()
+	go p.WriteClosedPositions(p.CtxApp, userID)
+}
+
+func (p *PositionsService) addToUserPositions(activePosition *ActivePosition) error {
+	if err := p.UsersPositions[activePosition.position.User.ID].Add(activePosition); err != nil {
+		return fmt.Errorf("position service / addToUserPositions / Add Active position to userActivePositions : %v", err)
+	}
+	return nil
+}
+
+func (p *PositionsService) startTakeActualStateAndAddSubscriber(activePosition *ActivePosition) {
+	chPrice := make(chan *model.Price)
+	p.PriceStorage.AddSubscriber(chPrice, activePosition.position.CompanyID)
+	p.rwm.RLock()
+	p.UsersPositions[activePosition.position.User.ID].StartTakeActualState(p.CtxApp, activePosition.position.ID, chPrice)
+	p.rwm.RUnlock()
+}
+
+func (p *PositionsService) writeToDB(activePosition *ActivePosition) error {
+	tx, err := p.PositionRepository.Pool.Begin(context.Background())
+	if err != nil {
+		return fmt.Errorf("PositionManager service_old/ writeToDB / get tx from pool : %v", err)
+	}
+
+	err = p.PositionRepository.InsertTx(context.Background(), tx, activePosition.position)
+	if err != nil {
+		return fmt.Errorf("service position / writeToDB / Insert to position into DB : %v ", err)
+	}
+	err = tx.Commit(context.Background())
+	if err != nil {
+		return fmt.Errorf("service position / writeToDB / Commit transaction : %v ", err)
+	}
+	return nil
 }
