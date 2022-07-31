@@ -48,20 +48,21 @@ func (s *StreamPriceCompany) StartStreaming(ctx context.Context) {
 				s.rwm.RUnlock()
 				tt := time.Now()
 				s.rwm.Lock()
-				for chElem := s.Subscribers.Front(); chElem != nil; chElem = chElem.Next() {
+				for chElem := s.Subscribers.Front(); chElem != nil; {
 					select {
 					case _, op := <-chElem.Value.(chan *model.Price):
 						log.Debug("Chanel was deleted")
-						if chElem.Next() != nil {
+						if chElem.Next() == nil {
+							s.Subscribers.Remove(chElem)
 							chElem = chElem.Next()
-							s.Subscribers.Remove(chElem.Prev())
 							continue
 						}
-						s.Subscribers.Remove(chElem)
-
+						chElem = chElem.Next()
+						s.Subscribers.Remove(chElem.Prev())
 						_ = op
 					default:
 						chElem.Value.(chan *model.Price) <- pr
+						chElem = chElem.Next()
 					}
 				}
 				s.rwm.Unlock()

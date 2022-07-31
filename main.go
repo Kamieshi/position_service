@@ -22,7 +22,7 @@ import (
 )
 
 func main() {
-	log.SetLevel(log.DebugLevel)
+	log.SetLevel(log.InfoLevel)
 	conf, err := config.GetConfig()
 	if err != nil {
 		log.WithError(err).Fatal()
