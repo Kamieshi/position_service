@@ -57,7 +57,7 @@ func (p *UserPositions) FixedClosedPosition(position *model.Position) error {
 		return fmt.Errorf("user position / FixedClosedPosition / add profit: %v", err)
 	}
 	p.closeAndDelete(position)
-	p.writeInRepository(position)
+	p.writeInBufferClosedPositions(position)
 	return nil
 }
 
@@ -66,7 +66,7 @@ func (p *UserPositions) closeAndDelete(position *model.Position) {
 	delete(p.PositionsMap, position.ID)
 }
 
-func (p *UserPositions) writeInRepository(position *model.Position) {
+func (p *UserPositions) writeInBufferClosedPositions(position *model.Position) {
 	p.BufferWriteClosePositionsInDB <- position
 }
 

@@ -49,6 +49,7 @@ func main() {
 
 	prStore := priceStorage.NewPriceStore(context.Background(), clientPriceService)
 	go prStore.ListenStream(context.Background())
+
 	PositionService := &service.PositionsService{
 		UsersPositions:     make(map[uuid.UUID]*service.UserPositions),
 		PriceStorage:       prStore,
@@ -56,7 +57,7 @@ func main() {
 		PositionRepository: positionRep,
 		CtxApp:             context.Background(),
 	}
-
+	go PositionService.SyncPositionService(context.Background())
 	grpcServer := grpc.NewServer()
 	protoc.RegisterPositionsManagerServer(grpcServer, &handlers.PositionManagerServerImplement{PositionsManager: PositionService})
 	protoc.RegisterUsersManagerServer(grpcServer, &handlers.UsersManagerServerImplement{UserService: userService})
