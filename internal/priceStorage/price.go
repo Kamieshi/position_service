@@ -12,6 +12,8 @@ import (
 	"github.com/Kamieshi/position_service/internal/model"
 )
 
+const exist = true
+
 // PriceStore Common Price store from all Position
 type PriceStore struct {
 	rwm               sync.RWMutex
@@ -52,17 +54,25 @@ func (p *PriceStore) SetPrice(companyID string, pr *model.Price) {
 	}
 	p.Companies[companyID] = pr
 	p.rwm.Unlock()
-	p.rwm.RLock()
-	_, ex := p.StreamSubscribers[companyID]
-	p.rwm.RUnlock()
-	if !ex {
+	logrus.Debug("Price For company ", companyID, " was updated. Current Delay ", time.Since(pr.Time))
+}
+
+// ShareToSubscribers Share new price into concrete StreamPriceCompany
+func (p *PriceStore) ShareToSubscribers(companyID string, price *model.Price) {
+	if p.checkExistSubscriberStream(companyID) != exist {
 		p.rwm.Lock()
 		p.StreamSubscribers[companyID] = NewStreamPriceCompany()
 		go p.StreamSubscribers[companyID].StartStreaming(p.CtxApp)
 		p.rwm.Unlock()
 	}
-	p.StreamSubscribers[companyID].DataChan <- pr
-	logrus.Debug("Price For company ", companyID, " was updated. Current Delay ", time.Since(pr.Time))
+	p.StreamSubscribers[companyID].DataChan <- price
+}
+
+func (p *PriceStore) checkExistSubscriberStream(companyID string) bool {
+	p.rwm.RLock()
+	_, ex := p.StreamSubscribers[companyID]
+	p.rwm.RUnlock()
+	return ex
 }
 
 // ListenStream Goroutine from save Price store in consistent state with Redis Stream
@@ -88,11 +98,13 @@ func (p *PriceStore) ListenStream(ctx context.Context) {
 			if err != nil {
 				logrus.WithError(err).Error("service_old priceStorage store/ListenStream Parse time")
 			}
-			p.SetPrice(data.Company.ID, &model.Price{
+			price := &model.Price{
 				Ask:  data.Ask,
 				Bid:  data.Bid,
 				Time: tt,
-			})
+			}
+			p.SetPrice(data.Company.ID, price)
+			p.ShareToSubscribers(data.Company.ID, price)
 		}
 	}
 }
