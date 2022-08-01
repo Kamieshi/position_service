@@ -114,6 +114,7 @@ func (p *PositionManagerServerImplement) GetPositionByID(ctx context.Context, re
 			IsFixed:         position.IsFixes,
 			MaxProfit:       position.MaxCurrentCost,
 			MinProfit:       position.MinCurrentCost,
+			UserID:          position.User.ID.String(),
 		},
 	}, nil
 }
@@ -145,6 +146,7 @@ func (p *PositionManagerServerImplement) GetAllUserPositions(ctx context.Context
 			IsFixed:         position.IsFixes,
 			MaxProfit:       position.MaxCurrentCost,
 			MinProfit:       position.MinCurrentCost,
+			UserID:          position.User.ID.String(),
 		})
 	}
 	return &protoc.GetAllUserPositionsResponse{
