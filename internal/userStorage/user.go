@@ -19,7 +19,7 @@ import (
 type UserService struct {
 	UserRep *repository.UserRepository
 	Users   map[uuid.UUID]*model.User
-	sync.RWMutex
+	rwm     sync.RWMutex
 }
 
 // NewUserService Constructor
@@ -38,8 +38,8 @@ func NewUserService(ctx context.Context, UserRep *repository.UserRepository) *Us
 		log.WithError(err).Fatal()
 	}
 	// Listening end sync users
-	go func() {
 
+	go func() {
 		for {
 			select {
 			case <-ctx.Done():
@@ -56,9 +56,9 @@ func NewUserService(ctx context.Context, UserRep *repository.UserRepository) *Us
 					log.WithError(err).Error("service_old User / parse from String ", notification.Payload)
 					continue
 				}
-				clServise.RLock()
+				clServise.rwm.RLock()
 				User, exist := clServise.Users[UserFromPool.ID]
-				clServise.RUnlock()
+				clServise.rwm.RUnlock()
 				if exist {
 					if User.ToString() == notification.Payload {
 						continue
@@ -76,9 +76,9 @@ func NewUserService(ctx context.Context, UserRep *repository.UserRepository) *Us
 
 // Get User from cache or DB
 func (c *UserService) Get(ctx context.Context, id uuid.UUID) (*model.User, error) {
-	c.RLock()
+	c.rwm.RLock()
 	User, exist := c.Users[id]
-	c.RUnlock()
+	c.rwm.RUnlock()
 	if exist {
 		return User, nil
 	}
@@ -86,43 +86,44 @@ func (c *UserService) Get(ctx context.Context, id uuid.UUID) (*model.User, error
 	if err != nil {
 		return nil, fmt.Errorf("serviece User/ Get : %v", err)
 	}
-	c.Lock()
+	c.rwm.Lock()
 	c.Users[User.ID] = User
-	c.Unlock()
+	c.rwm.Unlock()
 	if err != nil {
 		return nil, errors.New("UserService / GetUser : User isn't exist")
 	}
 	return User, nil
 }
 
+// AddProfit
 func (c *UserService) AddProfit(profit int64, userID uuid.UUID) error {
 	user, err := c.Get(context.Background(), userID)
 	if err != nil {
 		return fmt.Errorf("serviece User/ AddProfit : %v", err)
 	}
-	c.Lock()
+	c.rwm.Lock()
 	user.Balance += profit
-	c.Unlock()
+	c.rwm.Unlock()
 	return nil
 }
 
 // Sync User with DB User
 func (c *UserService) Sync(ctx context.Context, User *model.User) error {
-	c.RLock()
+	c.rwm.RLock()
 	cl, exist := c.Users[User.ID]
 	if !exist {
-		c.RUnlock()
-		log.Error(fmt.Errorf("User service_old / sync : User isn't in UserService cache %v", User))
+		c.rwm.RUnlock()
+		log.Error(fmt.Errorf("user service_old / sync : User isn't in UserService cache %v", User))
 		return nil
 	}
 	clFromDB, err := c.UserRep.GetByID(ctx, User.ID)
 	if err != nil {
-		return fmt.Errorf("User service_old / sync : %v", err)
+		return fmt.Errorf("user service_old / sync : %v", err)
 	}
-	cl.Lock()
+	cl.Rwm.Lock()
 	cl.Balance = clFromDB.Balance
 	cl.Name = clFromDB.Name
-	cl.Unlock()
+	cl.Rwm.Unlock()
 	return nil
 }
 
@@ -148,28 +149,28 @@ func (c *UserService) CreateUser(ctx context.Context, User *model.User) error {
 func (c *UserService) Update(ctx context.Context, User *model.User) error {
 	tx, err := c.UserRep.Pool.Begin(ctx)
 	if err != nil {
-		return fmt.Errorf("User service_old/ Update /Open Begin: %v ", err)
+		return fmt.Errorf("user service_old/ Update /Open Begin: %v ", err)
 	}
 	err = c.UserRep.UpdateTx(ctx, tx, User)
 	if err != nil {
-		return fmt.Errorf("User service_old / Update / Update User TX: %v ", err)
+		return fmt.Errorf("user service_old / Update / Update User TX: %v ", err)
 	}
-	c.RLock()
+	c.rwm.RLock()
 	cl, exist := c.Users[User.ID]
-	c.RUnlock()
+	c.rwm.RUnlock()
 	if exist {
-		c.Lock()
+		c.rwm.Lock()
 		cl.Balance = User.Balance
 		cl.Name = User.Name
-		c.Unlock()
+		c.rwm.Unlock()
 	}
 	cm, err := tx.Exec(ctx, fmt.Sprintf("NOTIFY update_user, '%s'", cl.ToString()))
 	if err != nil {
-		return fmt.Errorf("User service_old / Update / Send notify err: %v, message %s ", err, cm.String())
+		return fmt.Errorf("user service_old / Update / Send notify err: %v, message %s ", err, cm.String())
 	}
 	err = tx.Commit(ctx)
 	if err != nil {
-		return fmt.Errorf("User service_old / Update : %v ", err)
+		return fmt.Errorf("user service_old / Update : %v ", err)
 	}
 	return nil
 }
@@ -183,10 +184,11 @@ func (c *UserService) GetAll(ctx context.Context) ([]*model.User, error) {
 	return Users, nil
 }
 
+// AddProfitInRepositoryTX
 func (c *UserService) AddProfitInRepositoryTX(ctx context.Context, tx pgx.Tx, userID uuid.UUID, profit int64) error {
 	err := c.UserRep.AddProfitTX(ctx, tx, userID, profit)
 	if err != nil {
-		return fmt.Errorf("User storage / AddProfitInRepositoryTX / Try add profit to user : %v", err)
+		return fmt.Errorf("user storage / AddProfitInRepositoryTX / Try add profit to user : %v", err)
 	}
 	return nil
 }

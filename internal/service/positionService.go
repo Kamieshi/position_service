@@ -15,6 +15,7 @@ import (
 	"github.com/Kamieshi/position_service/internal/userStorage"
 )
 
+// PositionsService  Main service for work with positions
 type PositionsService struct {
 	UsersPositions     map[uuid.UUID]*UserPositions
 	PriceStorage       *priceStorage.PriceStore
@@ -25,10 +26,8 @@ type PositionsService struct {
 }
 
 const (
-	actualState           = true
-	enoughForOpenPosition = true
-	chanelOpenPosition    = "open_position"
-	chanelClosePosition   = "close_position"
+	chanelOpenPosition  = "open_position"
+	chanelClosePosition = "close_position"
 )
 
 // OpenPosition open position
@@ -36,13 +35,13 @@ func (p *PositionsService) OpenPosition(ctx context.Context, position *model.Pos
 	logrus.Debug("Position service / OpenPosition ")
 	if state, err := p.checkActualOpenedPriceState(position); err != nil {
 		return fmt.Errorf("service position / OpenPosition / Error get actualState price : %v ", err)
-	} else if state != actualState {
+	} else if !state {
 		return fmt.Errorf("service position / OpenPosition / Opened price isn't actual ")
 	}
 
 	if enough, err := p.checkEnoughBalanceUser(ctx, position); err != nil {
 		return fmt.Errorf("service position / OpenPosition / try check user balance : %v ", err)
-	} else if enough != enoughForOpenPosition {
+	} else if !enough {
 		return fmt.Errorf("service position / OpenPosition / Isn't enough monay for open position")
 	}
 
@@ -77,6 +76,7 @@ func (p *PositionsService) ClosePosition(ctx context.Context, userID, positionID
 
 // WriteClosedPositions G for write closed position in db from buffer closed position
 func (p *PositionsService) WriteClosedPositions(ctx context.Context, userID uuid.UUID) {
+	logrus.Debug("start WriteClosedPositions")
 	logrus.Debugf("Start WriteClosedPositions for user %v", userID)
 	p.rwm.RLock()
 	bufChan := p.UsersPositions[userID].BufferWriteClosePositionsInDB
@@ -86,6 +86,7 @@ func (p *PositionsService) WriteClosedPositions(ctx context.Context, userID uuid
 		case <-ctx.Done():
 			return
 		case position := <-bufChan:
+			logrus.Debug("Was send message in buffer : ", position)
 			tx, err := p.PositionRepository.Pool.Begin(ctx)
 			if err != nil {
 				logrus.WithError(err).Error("position service / WriteClosedPositions / open transaction")
@@ -117,41 +118,48 @@ func (p *PositionsService) WriteClosedPositions(ctx context.Context, userID uuid
 
 // SyncPositionService G listen open and close position channels from DB and sync current instance
 func (p *PositionsService) SyncPositionService(ctx context.Context) {
+	logrus.Debug("start SyncPositionService")
 	conn, err := p.getInitListenConnection(ctx)
 	if err != nil {
 		logrus.WithError(err).Error("position service / SyncPositionService / Get connection ")
 		return
 	}
 	for {
-		message, err := conn.WaitForNotification(ctx)
-		if err != nil {
-			logrus.WithError(err).Error("position service / SyncPostgresChanel / send listen position_close")
-			continue
-		}
-		positionID, err := uuid.Parse(message.Payload)
-		if err != nil {
-			logrus.WithError(err).Error("position service / SyncPostgresChanel / parse id from message : ", message.Payload)
-			continue
-		}
-		position, err := p.getPositionFromRepository(positionID)
-		if err != nil {
-			logrus.WithError(err).Error("position service / SyncPostgresChanel / get position from db ")
-			continue
-		}
-
-		switch message.Channel {
-		case chanelOpenPosition:
-			if err := p.openPositionTriggeredSync(position); err != nil {
-				logrus.WithError(err).Error("position service / SyncPostgresChanel / open position")
-				continue
-			}
-		case chanelClosePosition:
-			if err := p.closePositionTriggeredSync(position); err != nil {
-				logrus.WithError(err).Error("position service / SyncPostgresChanel / open position")
-				continue
-			}
+		select {
+		case <-ctx.Done():
+			return
 		default:
-			logrus.Errorf("Incorrect chanel name %s", message.Channel)
+			message, err := conn.WaitForNotification(ctx)
+			logrus.Debug("Was send sync message : ", message)
+			if err != nil {
+				logrus.WithError(err).Error("position service / SyncPostgresChanel / send listen position_close")
+				continue
+			}
+			positionID, err := uuid.Parse(message.Payload)
+			if err != nil {
+				logrus.WithError(err).Error("position service / SyncPostgresChanel / parse id from message : ", message.Payload)
+				continue
+			}
+			position, err := p.getPositionFromRepository(positionID)
+			if err != nil {
+				logrus.WithError(err).Error("position service / SyncPostgresChanel / get position from db ")
+				continue
+			}
+
+			switch message.Channel {
+			case chanelOpenPosition:
+				if err := p.openPositionTriggeredSync(position); err != nil {
+					logrus.WithError(err).Warn("position service / SyncPostgresChanel / open position")
+					continue
+				}
+			case chanelClosePosition:
+				if err := p.closePositionTriggeredSync(position); err != nil {
+					logrus.WithError(err).Warn("position service / SyncPostgresChanel / open position")
+					continue
+				}
+			default:
+				logrus.Errorf("Incorrect chanel name %s", message.Channel)
+			}
 		}
 	}
 }
@@ -164,7 +172,9 @@ func (p *PositionsService) userPositionsIsExist(userID uuid.UUID) bool {
 }
 
 func (p *PositionsService) closePositionForUser(userID, positionID uuid.UUID) (*model.Position, error) {
+	p.rwm.RLock()
 	position, err := p.UsersPositions[userID].CloseByID(positionID)
+	p.rwm.RUnlock()
 	if err != nil {
 		return nil, fmt.Errorf("position service / closePositionForUser / close position : %v", err)
 	}
@@ -179,7 +189,7 @@ func (p *PositionsService) checkActualOpenedPriceState(position *model.Position)
 	if currentPrice.Bid != position.OpenPrice.Bid {
 		return false, nil
 	}
-	return actualState, nil
+	return true, nil
 }
 
 func (p *PositionsService) checkEnoughBalanceUser(ctx context.Context, position *model.Position) (bool, error) {
@@ -198,7 +208,7 @@ func (p *PositionsService) addNewUserPositions(userID uuid.UUID) {
 	p.UsersPositions[userID] = NewUserPositions(p.UserStorage)
 	p.rwm.Unlock()
 	go p.UsersPositions[userID].FixedClosedActivePositions()
-	go p.UsersPositions[userID].CheckSummaryProfitAndAutoCloseMostNegativePositionWhenCommonProfitBecameNegative()
+	go p.UsersPositions[userID].CheckCommonProfit()
 	go p.WriteClosedPositions(p.CtxApp, userID)
 }
 
@@ -218,6 +228,7 @@ func (p *PositionsService) startTakeActualStateAndAddSubscriber(activePosition *
 }
 
 func (p *PositionsService) writeNewToDB(activePosition *ActivePosition) error {
+	logrus.Debug("writeNewToDB")
 	tx, err := p.PositionRepository.Pool.Begin(context.Background())
 	if err != nil {
 		return fmt.Errorf("PositionManager service_old/ writeNewToDB / get tx from pool : %v", err)
@@ -245,11 +256,17 @@ func (p *PositionsService) getInitListenConnection(ctx context.Context) (*pgx.Co
 	if err != nil {
 		return nil, fmt.Errorf("position service / getInitListenConnection / cannot get connection from pgxPool : %v", err)
 	}
-	cm, err := chListenerConnection.Exec(context.Background(), "LISTEN position_open;")
+	cm, err := chListenerConnection.Exec(
+		context.Background(),
+		fmt.Sprintf("LISTEN %s;", chanelOpenPosition),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("position service / getInitListenConnection / send listen position_open : %v .%s", err, cm.String())
 	}
-	cm, err = chListenerConnection.Exec(context.Background(), "LISTEN position_close;")
+	cm, err = chListenerConnection.Exec(
+		context.Background(),
+		fmt.Sprintf("LISTEN %s;", chanelClosePosition),
+	)
 	if err != nil {
 		logrus.WithError(err).Error("position service / getInitListenConnection / send listen position_close : ", cm.String())
 		return nil, fmt.Errorf("position service / getInitListenConnection /  send listen position_close : %v .%s", err, cm.String())
@@ -284,7 +301,7 @@ func (p *PositionsService) closePositionTriggeredSync(position *model.Position) 
 func (p *PositionsService) getPositionFromRepository(positionID uuid.UUID) (*model.Position, error) {
 	position, err := p.PositionRepository.Get(context.Background(), positionID)
 	if err != nil {
-		return nil, fmt.Errorf("position service / getPositionFromRepository / get position from Rep : %v", err)
+		return nil, fmt.Errorf("position service / getPositionFromRepository / get position %s from Rep : %v", positionID, err)
 	}
 	return position, nil
 }

@@ -25,14 +25,14 @@ var (
 	priceStorage        *prst.PriceStore
 	UserServiceClient   protoc.UsersManagerClient
 	UserRep             *repository.UserRepository
-	companyID1          = "a1613fb7-05c4-41bd-9a95-64e1cbdb5518"
+	companyID1          = "6b04e67c-f2b5-4a20-aec7-34f365d97419"
 	companies           = []string{
-		"a1613fb7-05c4-41bd-9a95-64e1cbdb5518",
+		"6b04e67c-f2b5-4a20-aec7-34f365d97419",
 	}
 )
 
 func TestMain(m *testing.M) {
-	PositionService, err := grpc.Dial("localhost:5301", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	PositionService, err := grpc.Dial("localhost:5302", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("fail to dial: %v", err)
 	}
@@ -128,7 +128,6 @@ func TestUnFixedBuyPosition(t *testing.T) {
 	if expectedProfit != respClosePosition.Profit {
 		t.Error("Not equal", expectedProfit, respClosePosition.Profit)
 	}
-
 }
 
 func TestUnFixedSalePosition(t *testing.T) {
@@ -252,7 +251,7 @@ func TestAddBalance(t *testing.T) {
 
 func TestManyUsersOpenPosition(t *testing.T) {
 	countUsers := 10
-	countPosition := 1000
+	countPosition := 100
 
 	users := make([]*model.User, 0, countUsers)
 	for i := 0; i < countUsers; i++ {

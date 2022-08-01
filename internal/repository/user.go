@@ -1,4 +1,4 @@
-// package repository
+// Package repository
 package repository
 
 import (
@@ -32,7 +32,7 @@ func (c *UserRepository) Insert(ctx context.Context, client *model.User) error {
 	return nil
 }
 
-// Update update users if this user exist
+// Update users if this user exist
 func (c *UserRepository) Update(ctx context.Context, client *model.User) error {
 	querySQL := "UPDATE users SET name=$1,balance=$2 WHERE id=$3"
 	cm, err := c.Pool.Exec(ctx, querySQL, client.Name, client.Balance, client.ID)
@@ -91,6 +91,7 @@ func (c *UserRepository) UpdateTx(ctx context.Context, tx pgx.Tx, client *model.
 	return nil
 }
 
+// GetAll
 func (c *UserRepository) GetAll(ctx context.Context) ([]*model.User, error) {
 	rows, err := c.Pool.Query(ctx, "SELECT id, name,balance FROM users")
 	if err != nil {
@@ -112,6 +113,7 @@ func (c *UserRepository) GetAll(ctx context.Context) ([]*model.User, error) {
 	return users, nil
 }
 
+// AddProfitTX add profit
 func (c *UserRepository) AddProfitTX(ctx context.Context, tx pgx.Tx, userID uuid.UUID, profit int64) error {
 	querySQL := "UPDATE users SET balance = balance + $1 WHERE id = $2;"
 	cm, err := tx.Exec(ctx, querySQL, profit, userID)

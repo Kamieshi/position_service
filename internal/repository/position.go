@@ -66,9 +66,10 @@ func (p *PositionRepository) Get(ctx context.Context, positionID uuid.UUID) (*mo
 	position := model.Position{}
 	position.User = &model.User{}
 	position.OpenPrice = model.Price{}
-	querySQL := "SELECT " +
-		"id, user, company, ask_open, bid_open, is_opened,close_profit, time_price_open,count_buy_position, max_position_cost, min_position_cost," +
-		" is_sales, is_fixed FROM positions WHERE id=$1;"
+	querySQL := `SELECT
+				id, "user", company, ask_open, bid_open, is_opened,close_profit, time_price_open,count_buy_position,
+				max_position_cost, min_position_cost,is_sales, is_fixed FROM positions
+				WHERE id=$1;`
 	err := p.Pool.QueryRow(ctx, querySQL, positionID).Scan(
 		&position.ID,
 		&position.User.ID,

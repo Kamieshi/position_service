@@ -4,7 +4,7 @@ import "github.com/google/uuid"
 
 // Position model position
 type Position struct {
-	ID               uuid.UUID `db:"id,omitempty"`
+	ID               uuid.UUID `db:"id,omitempty" pg:"type:uuid" bun:",pk,type:uuid,default:uuid_generate_v4()"`
 	User             *User     `db:"user,omitempty"`
 	OpenPrice        Price     `db:"open_price,omitempty"`
 	CompanyID        string    `db:"company"`

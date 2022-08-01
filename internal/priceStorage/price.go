@@ -1,3 +1,4 @@
+// Package priceStorage
 package priceStorage
 
 import (
@@ -11,8 +12,6 @@ import (
 
 	"github.com/Kamieshi/position_service/internal/model"
 )
-
-const exist = true
 
 // PriceStore Common Price store from all Position
 type PriceStore struct {
@@ -50,7 +49,7 @@ func (p *PriceStore) GetPrice(companyID string) (*model.Price, error) {
 func (p *PriceStore) SetPrice(companyID string, pr *model.Price) {
 	p.rwm.Lock()
 	if _, exist := p.Companies[companyID]; !exist {
-		logrus.WithField("Company", fmt.Sprintf("%v", companyID)).Info()
+		logrus.WithField("Company", fmt.Sprintf("%s", companyID)).Info()
 	}
 	p.Companies[companyID] = pr
 	p.rwm.Unlock()
@@ -59,7 +58,7 @@ func (p *PriceStore) SetPrice(companyID string, pr *model.Price) {
 
 // ShareToSubscribers Share new price into concrete StreamPriceCompany
 func (p *PriceStore) ShareToSubscribers(companyID string, price *model.Price) {
-	if p.checkExistSubscriberStream(companyID) != exist {
+	if !p.checkExistSubscriberStream(companyID) {
 		p.rwm.Lock()
 		p.StreamSubscribers[companyID] = NewStreamPriceCompany()
 		go p.StreamSubscribers[companyID].StartStreaming(p.CtxApp)

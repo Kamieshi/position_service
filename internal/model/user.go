@@ -11,10 +11,10 @@ import (
 
 // User model user
 type User struct {
-	ID      uuid.UUID `db:"id"`
+	ID      uuid.UUID `db:"id" pg:"type:uuid" bun:"type:uuid,default:uuid_generate_v4()"`
 	Name    string    `db:"name"`
 	Balance int64     `db:"balance"`
-	sync.RWMutex
+	Rwm     sync.RWMutex
 }
 
 // ToString output format "c.ID|c.Name|c.Balance"

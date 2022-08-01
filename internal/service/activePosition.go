@@ -11,6 +11,7 @@ import (
 	"github.com/Kamieshi/position_service/internal/model"
 )
 
+// ActivePosition layer for work with position in context user Positions
 type ActivePosition struct {
 	position            *model.Position
 	chFromClose         chan bool
@@ -18,11 +19,11 @@ type ActivePosition struct {
 	rwm                 sync.RWMutex
 }
 
-const conditionsIsFulfilled = true
-
 // NewActiveOpenedPosition Constructor
 func NewActiveOpenedPosition(position *model.Position) *ActivePosition {
-	position.ID = uuid.New()
+	if position.ID == uuid.Nil {
+		position.ID = uuid.New()
+	}
 	chCLose := make(chan bool)
 	position.IsOpened = true
 	return &ActivePosition{
@@ -50,7 +51,7 @@ func (p *ActivePosition) StartTakeActualStateAndAutoClose(ctx context.Context, c
 				continue
 			}
 			profit := p.CalculateProfit(price)
-			if p.CheckCloseConditions(profit) == conditionsIsFulfilled {
+			if p.CheckCloseConditions(profit) {
 				p.rwm.Lock()
 				p.position.WasAutoCLose = true
 				p.position.IsOpened = false

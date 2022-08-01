@@ -21,6 +21,7 @@ const (
 	sizeQueueClosedPositionOnWriteToRep = 100
 )
 
+// UserPositions struct for work with one user's positions
 type UserPositions struct {
 	Positions                     *list.List
 	PositionsMap                  map[uuid.UUID]*ActivePosition
@@ -43,13 +44,11 @@ func NewUserPositions(userSt *userStorage.UserService) *UserPositions {
 // Add active position into PositionsMap and Positions List
 func (p *UserPositions) Add(activePosition *ActivePosition) error {
 	logrus.Debug("Add")
-	p.rwm.RLock()
+	p.rwm.Lock()
 	if _, exist := p.PositionsMap[activePosition.position.ID]; exist {
-		p.rwm.RUnlock()
+		p.rwm.Unlock()
 		return fmt.Errorf("user positions / Add / Current position is exist : %v ", activePosition.position.ID)
 	}
-	p.rwm.RUnlock()
-	p.rwm.Lock()
 	p.PositionsMap[activePosition.position.ID] = activePosition
 	p.Positions.PushBack(activePosition.position)
 	p.rwm.Unlock()
@@ -58,20 +57,16 @@ func (p *UserPositions) Add(activePosition *ActivePosition) error {
 
 // FixedClosedPosition active position if this position was opened, send message into close chanel and TakeActualState goroutine will be stopped
 func (p *UserPositions) FixedClosedPosition(position *model.Position) error {
-	logrus.Debug("FixedClosedPosition")
+	logrus.Debug("FixedClosedPosition :", position)
 	err := p.userStorage.AddProfit(position.Profit, position.User.ID)
 	if err != nil {
 		return fmt.Errorf("user position / FixedClosedPosition / add profit: %v", err)
 	}
-	p.closeAndDelete(position)
-	p.rwm.RLock()
 	if p.PositionsMap[position.ID].closedTriggeredSync {
-		p.rwm.RUnlock()
 		return nil
 	}
-	p.rwm.RUnlock()
-
 	p.writeInBufferClosedPositions(position)
+	p.closeAndDelete(position)
 	return nil
 }
 
@@ -81,6 +76,7 @@ func (p *UserPositions) closeAndDelete(position *model.Position) {
 }
 
 func (p *UserPositions) writeInBufferClosedPositions(position *model.Position) {
+	logrus.Debug("writeInBufferClosedPositions", position)
 	p.BufferWriteClosePositionsInDB <- position
 }
 
@@ -136,8 +132,8 @@ func (p *UserPositions) FixedClosedActivePositions() {
 	}
 }
 
-// CheckSummaryProfitAndAutoCloseMostNegativePositionWhenCommonProfitBecameNegative  TODO Rename and destroy on more smale func
-func (p *UserPositions) CheckSummaryProfitAndAutoCloseMostNegativePositionWhenCommonProfitBecameNegative() {
+// CheckCommonProfit Check common profit and drop most negative profit position
+func (p *UserPositions) CheckCommonProfit() {
 	var minProfitPosition *model.Position
 	commonProfit := int64(0)
 	for {
@@ -162,7 +158,7 @@ func (p *UserPositions) CheckSummaryProfitAndAutoCloseMostNegativePositionWhenCo
 			if err != nil {
 				logrus.WithError(err).Error("user position / FixedClosedPosition / get user")
 			}
-			p.userStorage.RLock()
+			user.Rwm.RLock()
 			if user.Balance+commonProfit <= 0 {
 				pos, err := p.CloseByID(minProfitPosition.ID)
 				if err != nil {
@@ -170,7 +166,7 @@ func (p *UserPositions) CheckSummaryProfitAndAutoCloseMostNegativePositionWhenCo
 				}
 				logrus.Debug(pos, " was auto close because common profit is less than client balance")
 			}
-			p.userStorage.RUnlock()
+			user.Rwm.RUnlock()
 		}
 		minProfitPosition = nil
 		commonProfit = 0
@@ -180,6 +176,7 @@ func (p *UserPositions) CheckSummaryProfitAndAutoCloseMostNegativePositionWhenCo
 
 // CloseTriggeredSync Close position triggerred chanel sync from postgres
 func (p *UserPositions) CloseTriggeredSync(position *model.Position) error {
+	logrus.Debug("CloseTriggeredSync : ", position)
 	p.rwm.RLock()
 	if _, e := p.PositionsMap[position.ID]; !e {
 		return fmt.Errorf("user positions/ CloseTriggeredSync / ActivePosition with ID %s not exist ", position.ID)
