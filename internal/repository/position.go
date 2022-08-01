@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/sirupsen/logrus"
 
 	"github.com/Kamieshi/position_service/internal/model"
 )
@@ -89,4 +90,45 @@ func (p *PositionRepository) Get(ctx context.Context, positionID uuid.UUID) (*mo
 		return nil, fmt.Errorf("repository Position/Get : %v ", err)
 	}
 	return &position, err
+}
+
+func (p *PositionRepository) GetAllUserPositions(ctx context.Context, userID uuid.UUID) ([]*model.Position, error) {
+	querySQL := `SELECT
+				id, "user", company, ask_open, bid_open, is_opened,close_profit, time_price_open,count_buy_position,
+				max_position_cost, min_position_cost,is_sales, is_fixed FROM positions
+				WHERE "user"=$1;`
+
+	rows, err := p.Pool.Query(ctx, querySQL, userID)
+	if err != nil {
+		return nil, fmt.Errorf("repository position / GetAllUserPositions / Get from DB : %v", err)
+	}
+	positions := make([]*model.Position, 0)
+	for rows.Next() {
+		position := model.Position{}
+		position.User = &model.User{}
+		position.OpenPrice = model.Price{}
+
+		err = rows.Scan(
+			&position.ID,
+			&position.User.ID,
+			&position.CompanyID,
+			&position.OpenPrice.Ask,
+			&position.OpenPrice.Bid,
+			&position.IsOpened,
+			&position.Profit,
+			&position.OpenPrice.Time,
+			&position.CountBuyPosition,
+			&position.MaxCurrentCost,
+			&position.MinCurrentCost,
+			&position.IsSales,
+			&position.IsFixes,
+		)
+		if err != nil {
+			logrus.WithError(err).Error("repository position / GetAllUserPositions / Scan ")
+			continue
+		}
+		positions = append(positions, &position)
+	}
+	return positions, nil
+
 }

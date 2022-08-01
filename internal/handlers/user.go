@@ -69,6 +69,12 @@ func (c *UsersManagerServerImplement) AddBalance(ctx context.Context, req *proto
 		log.WithError(err).Error("ErrorGetUser,AddBalance handler UserManagerServer")
 		return &protoc.AddBalanceResponse{Error: err.Error()}, nil
 	}
+
+	if User.Balance+req.DifferentBalance < 0 {
+		log.WithError(err).Error("user handler / AddBalance / low balance ")
+		return &protoc.AddBalanceResponse{Error: "Don't have enough money"}, nil
+	}
+
 	User.Balance += req.DifferentBalance
 	err = c.UserService.Update(ctx, User)
 	if err != nil {

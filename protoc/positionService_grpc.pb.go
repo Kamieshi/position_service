@@ -24,6 +24,8 @@ const _ = grpc.SupportPackageIsVersion7
 type PositionsManagerClient interface {
 	OpenPosition(ctx context.Context, in *OpenPositionRequest, opts ...grpc.CallOption) (*OpenPositionResponse, error)
 	ClosePosition(ctx context.Context, in *ClosePositionRequest, opts ...grpc.CallOption) (*ClosePositionResponse, error)
+	GetPositionByID(ctx context.Context, in *GetPositionByIDRequest, opts ...grpc.CallOption) (*GetPositionByIDResponse, error)
+	GetAllUserPositions(ctx context.Context, in *GetAllUserPositionsRequest, opts ...grpc.CallOption) (*GetAllUserPositionsResponse, error)
 }
 
 type positionsManagerClient struct {
@@ -52,12 +54,32 @@ func (c *positionsManagerClient) ClosePosition(ctx context.Context, in *ClosePos
 	return out, nil
 }
 
+func (c *positionsManagerClient) GetPositionByID(ctx context.Context, in *GetPositionByIDRequest, opts ...grpc.CallOption) (*GetPositionByIDResponse, error) {
+	out := new(GetPositionByIDResponse)
+	err := c.cc.Invoke(ctx, "/positionService.PositionsManager/GetPositionByID", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *positionsManagerClient) GetAllUserPositions(ctx context.Context, in *GetAllUserPositionsRequest, opts ...grpc.CallOption) (*GetAllUserPositionsResponse, error) {
+	out := new(GetAllUserPositionsResponse)
+	err := c.cc.Invoke(ctx, "/positionService.PositionsManager/GetAllUserPositions", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PositionsManagerServer is the server API for PositionsManager service.
 // All implementations must embed UnimplementedPositionsManagerServer
 // for forward compatibility
 type PositionsManagerServer interface {
 	OpenPosition(context.Context, *OpenPositionRequest) (*OpenPositionResponse, error)
 	ClosePosition(context.Context, *ClosePositionRequest) (*ClosePositionResponse, error)
+	GetPositionByID(context.Context, *GetPositionByIDRequest) (*GetPositionByIDResponse, error)
+	GetAllUserPositions(context.Context, *GetAllUserPositionsRequest) (*GetAllUserPositionsResponse, error)
 	mustEmbedUnimplementedPositionsManagerServer()
 }
 
@@ -70,6 +92,12 @@ func (UnimplementedPositionsManagerServer) OpenPosition(context.Context, *OpenPo
 }
 func (UnimplementedPositionsManagerServer) ClosePosition(context.Context, *ClosePositionRequest) (*ClosePositionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ClosePosition not implemented")
+}
+func (UnimplementedPositionsManagerServer) GetPositionByID(context.Context, *GetPositionByIDRequest) (*GetPositionByIDResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetPositionByID not implemented")
+}
+func (UnimplementedPositionsManagerServer) GetAllUserPositions(context.Context, *GetAllUserPositionsRequest) (*GetAllUserPositionsResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAllUserPositions not implemented")
 }
 func (UnimplementedPositionsManagerServer) mustEmbedUnimplementedPositionsManagerServer() {}
 
@@ -120,6 +148,42 @@ func _PositionsManager_ClosePosition_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PositionsManager_GetPositionByID_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPositionByIDRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PositionsManagerServer).GetPositionByID(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/positionService.PositionsManager/GetPositionByID",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PositionsManagerServer).GetPositionByID(ctx, req.(*GetPositionByIDRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PositionsManager_GetAllUserPositions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAllUserPositionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PositionsManagerServer).GetAllUserPositions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/positionService.PositionsManager/GetAllUserPositions",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PositionsManagerServer).GetAllUserPositions(ctx, req.(*GetAllUserPositionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PositionsManager_ServiceDesc is the grpc.ServiceDesc for PositionsManager service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -134,6 +198,14 @@ var PositionsManager_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ClosePosition",
 			Handler:    _PositionsManager_ClosePosition_Handler,
+		},
+		{
+			MethodName: "GetPositionByID",
+			Handler:    _PositionsManager_GetPositionByID_Handler,
+		},
+		{
+			MethodName: "GetAllUserPositions",
+			Handler:    _PositionsManager_GetAllUserPositions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

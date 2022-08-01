@@ -164,6 +164,22 @@ func (p *PositionsService) SyncPositionService(ctx context.Context) {
 	}
 }
 
+func (p *PositionsService) GetByID(ctx context.Context, positionID uuid.UUID) (*model.Position, error) {
+	pos, err := p.PositionRepository.Get(ctx, positionID)
+	if err != nil {
+		return nil, fmt.Errorf("Position service / GetById / Get position from rep : %v", err)
+	}
+	return pos, nil
+}
+
+func (p *PositionsService) GetAllUserPositions(ctx context.Context, userID uuid.UUID) ([]*model.Position, error) {
+	positions, err := p.PositionRepository.GetAllUserPositions(ctx, userID)
+	if err != nil {
+		return nil, fmt.Errorf("service position / GetAllUserPositions / get positions form repository : %v ", err)
+	}
+	return positions, err
+}
+
 func (p *PositionsService) userPositionsIsExist(userID uuid.UUID) bool {
 	if _, exist := p.UsersPositions[userID]; !exist {
 		return false

@@ -20,9 +20,24 @@ message User{
   int64 Balance = 3;
 }
 
+message Position{
+  string PositionID = 1;
+  string CompanyID = 2;
+  uint32 OpenedBid = 3;
+  uint32 OpenedAsk = 4;
+  string TimeOpenedPrice = 5;
+  bool IsOpened = 6;
+  bool IsSale = 7;
+  bool IsFixed = 8;
+  int64 MaxProfit = 9;
+  int64 MinProfit = 10;
+}
+
 service PositionsManager{
   rpc OpenPosition(OpenPositionRequest) returns (OpenPositionResponse){}
   rpc ClosePosition(ClosePositionRequest) returns (ClosePositionResponse){}
+  rpc GetPositionByID(GetPositionByIDRequest)returns(GetPositionByIDResponse){}
+  rpc GetAllUserPositions(GetAllUserPositionsRequest)returns(GetAllUserPositionsResponse){}
 }
 message OpenPositionRequest {
   Price Price = 1;
@@ -45,6 +60,22 @@ message ClosePositionRequest{
 }
 message ClosePositionResponse{
   int64 Profit = 1;
+  string Error = 2;
+}
+
+message GetPositionByIDRequest{
+  string PositionID = 1;
+}
+message GetPositionByIDResponse{
+  Position Position = 1;
+  string Error = 2;
+}
+
+message GetAllUserPositionsRequest{
+  string UserID = 1;
+}
+message GetAllUserPositionsResponse{
+  repeated Position Positions = 1;
   string Error = 2;
 }
 
