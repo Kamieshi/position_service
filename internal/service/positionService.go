@@ -66,7 +66,7 @@ func (p *PositionsService) OpenPosition(ctx context.Context, position *model.Pos
 func (p *PositionsService) ClosePosition(ctx context.Context, userID, positionID uuid.UUID) (*model.Position, error) {
 	logrus.Debug("Position service / ClosePosition ")
 	if !p.userPositionsIsExist(userID) {
-		return nil, fmt.Errorf("ActivePosition service / CloasePosition / user %s not exist ")
+		return nil, fmt.Errorf("ActivePosition service / CloasePosition / user %s not exist", userID)
 	}
 	position, err := p.closePositionForUser(userID, positionID)
 	if err != nil {
@@ -264,7 +264,6 @@ func (p *PositionsService) openPositionTriggeredSync(position *model.Position) e
 	activePosition := NewActiveOpenedPosition(position)
 	if err := p.addToUserPositions(activePosition); err != nil {
 		return fmt.Errorf("service position / openPositionTriggeredSync / add active position to user activePositions : %v ", err)
-
 	}
 	p.startTakeActualStateAndAddSubscriber(activePosition)
 	return nil
