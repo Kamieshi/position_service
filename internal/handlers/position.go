@@ -24,12 +24,12 @@ func (p *PositionManagerServerImplement) OpenPosition(ctx context.Context, req *
 	clientID, err := uuid.Parse(req.UserID)
 	if err != nil {
 		log.WithError(err).Error("Add handler PositionManagerServer Parse ID")
-		return &protoc.OpenPositionResponse{}, err
+		return &protoc.OpenPositionResponse{Error: err.Error()}, nil
 	}
 	timeIn, err := time.Parse("2006-01-02T15:04:05.000TZ-07:00", req.Price.Time)
 	if err != nil {
 		log.WithError(err).Error("Add handler PositionManagerServer Parse Time")
-		return &protoc.OpenPositionResponse{}, err
+		return &protoc.OpenPositionResponse{Error: err.Error()}, nil
 	}
 	price := model.Price{
 		Ask:  req.Price.Ask,
@@ -54,12 +54,13 @@ func (p *PositionManagerServerImplement) OpenPosition(ctx context.Context, req *
 	if err != nil {
 		log.WithError(err).Error("Add handler PositionManagerServer Add")
 		return &protoc.OpenPositionResponse{
-			ID: "",
-		}, err
+			ID:    "",
+			Error: err.Error(),
+		}, nil
 	}
 	return &protoc.OpenPositionResponse{
 		ID: position.ID.String(),
-	}, err
+	}, nil
 }
 
 // ClosePosition FixedClosedPosition position
@@ -68,18 +69,18 @@ func (p *PositionManagerServerImplement) ClosePosition(ctx context.Context, req 
 	positionID, err := uuid.Parse(req.PositionID)
 	if err != nil {
 		log.WithError(err).Error("_closePosition handler PositionManagerServer Parse ID")
-		return &protoc.ClosePositionResponse{}, err
+		return &protoc.ClosePositionResponse{Error: err.Error()}, nil
 	}
 	clientID, err := uuid.Parse(req.UserID)
 	if err != nil {
 		log.WithError(err).Error("_closePosition handler PositionManagerServer Parse Time")
-		return &protoc.ClosePositionResponse{}, err
+		return &protoc.ClosePositionResponse{Error: err.Error()}, nil
 	}
 
 	position, err := p.PositionsManager.ClosePosition(ctx, clientID, positionID)
 	if err != nil {
 		log.WithError(err).Error("_closePosition handler PositionManagerServer FixedClosedPosition ActivePosition")
-		return &protoc.ClosePositionResponse{}, err
+		return &protoc.ClosePositionResponse{Error: err.Error()}, nil
 	}
 
 	return &protoc.ClosePositionResponse{

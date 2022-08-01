@@ -18,7 +18,7 @@ import (
 // Requires gRPC-Go v1.32.0 or later.
 const _ = grpc.SupportPackageIsVersion7
 
-// PositionsManagerClient is the user API for PositionsManager service_old.
+// PositionsManagerClient is the client API for PositionsManager service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PositionsManagerClient interface {
@@ -36,7 +36,7 @@ func NewPositionsManagerClient(cc grpc.ClientConnInterface) PositionsManagerClie
 
 func (c *positionsManagerClient) OpenPosition(ctx context.Context, in *OpenPositionRequest, opts ...grpc.CallOption) (*OpenPositionResponse, error) {
 	out := new(OpenPositionResponse)
-	err := c.cc.Invoke(ctx, "/positionService.PositionsManager/Add", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/positionService.PositionsManager/OpenPosition", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -45,14 +45,14 @@ func (c *positionsManagerClient) OpenPosition(ctx context.Context, in *OpenPosit
 
 func (c *positionsManagerClient) ClosePosition(ctx context.Context, in *ClosePositionRequest, opts ...grpc.CallOption) (*ClosePositionResponse, error) {
 	out := new(ClosePositionResponse)
-	err := c.cc.Invoke(ctx, "/positionService.PositionsManager/_closePosition", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/positionService.PositionsManager/ClosePosition", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// PositionsManagerServer is the server API for PositionsManager service_old.
+// PositionsManagerServer is the server API for PositionsManager service.
 // All implementations must embed UnimplementedPositionsManagerServer
 // for forward compatibility
 type PositionsManagerServer interface {
@@ -66,14 +66,14 @@ type UnimplementedPositionsManagerServer struct {
 }
 
 func (UnimplementedPositionsManagerServer) OpenPosition(context.Context, *OpenPositionRequest) (*OpenPositionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Add not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method OpenPosition not implemented")
 }
 func (UnimplementedPositionsManagerServer) ClosePosition(context.Context, *ClosePositionRequest) (*ClosePositionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method _closePosition not implemented")
+	return nil, status.Errorf(codes.Unimplemented, "method ClosePosition not implemented")
 }
 func (UnimplementedPositionsManagerServer) mustEmbedUnimplementedPositionsManagerServer() {}
 
-// UnsafePositionsManagerServer may be embedded to opt out of forward compatibility for this service_old.
+// UnsafePositionsManagerServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to PositionsManagerServer will
 // result in compilation errors.
 type UnsafePositionsManagerServer interface {
@@ -94,7 +94,7 @@ func _PositionsManager_OpenPosition_Handler(srv interface{}, ctx context.Context
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/positionService.PositionsManager/Add",
+		FullMethod: "/positionService.PositionsManager/OpenPosition",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PositionsManagerServer).OpenPosition(ctx, req.(*OpenPositionRequest))
@@ -112,7 +112,7 @@ func _PositionsManager_ClosePosition_Handler(srv interface{}, ctx context.Contex
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/positionService.PositionsManager/_closePosition",
+		FullMethod: "/positionService.PositionsManager/ClosePosition",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PositionsManagerServer).ClosePosition(ctx, req.(*ClosePositionRequest))
@@ -120,7 +120,7 @@ func _PositionsManager_ClosePosition_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-// PositionsManager_ServiceDesc is the grpc.ServiceDesc for PositionsManager service_old.
+// PositionsManager_ServiceDesc is the grpc.ServiceDesc for PositionsManager service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var PositionsManager_ServiceDesc = grpc.ServiceDesc{
@@ -128,11 +128,11 @@ var PositionsManager_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*PositionsManagerServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "Add",
+			MethodName: "OpenPosition",
 			Handler:    _PositionsManager_OpenPosition_Handler,
 		},
 		{
-			MethodName: "_closePosition",
+			MethodName: "ClosePosition",
 			Handler:    _PositionsManager_ClosePosition_Handler,
 		},
 	},
@@ -140,7 +140,7 @@ var PositionsManager_ServiceDesc = grpc.ServiceDesc{
 	Metadata: "protoc/positionService.proto",
 }
 
-// UsersManagerClient is the user API for UsersManager service_old.
+// UsersManagerClient is the client API for UsersManager service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type UsersManagerClient interface {
@@ -194,7 +194,7 @@ func (c *usersManagerClient) GetAllUsers(ctx context.Context, in *GetAllUserRequ
 	return out, nil
 }
 
-// UsersManagerServer is the server API for UsersManager service_old.
+// UsersManagerServer is the server API for UsersManager service.
 // All implementations must embed UnimplementedUsersManagerServer
 // for forward compatibility
 type UsersManagerServer interface {
@@ -223,7 +223,7 @@ func (UnimplementedUsersManagerServer) GetAllUsers(context.Context, *GetAllUserR
 }
 func (UnimplementedUsersManagerServer) mustEmbedUnimplementedUsersManagerServer() {}
 
-// UnsafeUsersManagerServer may be embedded to opt out of forward compatibility for this service_old.
+// UnsafeUsersManagerServer may be embedded to opt out of forward compatibility for this service.
 // Use of this interface is not recommended, as added methods to UsersManagerServer will
 // result in compilation errors.
 type UnsafeUsersManagerServer interface {
@@ -306,7 +306,7 @@ func _UsersManager_GetAllUsers_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-// UsersManager_ServiceDesc is the grpc.ServiceDesc for UsersManager service_old.
+// UsersManager_ServiceDesc is the grpc.ServiceDesc for UsersManager service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
 var UsersManager_ServiceDesc = grpc.ServiceDesc{

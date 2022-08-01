@@ -24,7 +24,7 @@ func (c *UsersManagerServerImplement) GetUser(ctx context.Context, req *protoc.G
 	User, err := c.UserService.GetByName(ctx, req.Name)
 	if err != nil {
 		log.WithError(err).Error("GetUser handler UserManagerServer")
-		return &protoc.GetUserResponse{}, err
+		return &protoc.GetUserResponse{Error: err.Error()}, nil
 	}
 	return &protoc.GetUserResponse{
 		User: &protoc.User{
@@ -43,8 +43,9 @@ func (c *UsersManagerServerImplement) CreateUser(ctx context.Context, req *proto
 	if err != nil {
 		log.WithError(err).Warningln("CreateUser handler UserManagerServer")
 		return &protoc.CreateUserResponse{
-			User: req.User,
-		}, err
+			User:  req.User,
+			Error: err.Error(),
+		}, nil
 	}
 	return &protoc.CreateUserResponse{
 		User: &protoc.User{
@@ -61,18 +62,18 @@ func (c *UsersManagerServerImplement) AddBalance(ctx context.Context, req *proto
 	id, err := uuid.Parse(req.UserID)
 	if err != nil {
 		log.WithError(err).Error("ErrorParse,AddBalance handler UserManagerServer")
-		return &protoc.AddBalanceResponse{}, err
+		return &protoc.AddBalanceResponse{Error: err.Error()}, nil
 	}
 	User, err := c.UserService.Get(ctx, id)
 	if err != nil {
 		log.WithError(err).Error("ErrorGetUser,AddBalance handler UserManagerServer")
-		return &protoc.AddBalanceResponse{}, err
+		return &protoc.AddBalanceResponse{Error: err.Error()}, nil
 	}
 	User.Balance += req.DifferentBalance
 	err = c.UserService.Update(ctx, User)
 	if err != nil {
 		log.WithError(err).Error("ErrorUpdate,AddBalance handler UserManagerServer")
-		return &protoc.AddBalanceResponse{}, err
+		return &protoc.AddBalanceResponse{Error: err.Error()}, nil
 	}
 	return &protoc.AddBalanceResponse{}, nil
 }
@@ -83,7 +84,7 @@ func (c *UsersManagerServerImplement) GetAllUsers(ctx context.Context, req *prot
 	Users, err := c.UserService.GetAll(ctx)
 	if err != nil {
 		log.WithError(err).Error("GetAllUser handler UserManagerServer")
-		return nil, err
+		return &protoc.GetAllUsersResponse{Error: err.Error()}, nil
 	}
 	protoUsers := make([]*protoc.User, 0, len(Users))
 	for _, cl := range Users {
