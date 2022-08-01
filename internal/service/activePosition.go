@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/Kamieshi/position_service/internal/model"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
+
+	"github.com/Kamieshi/position_service/internal/model"
 )
 
 type ActivePosition struct {
-	position    *model.Position
-	chFromClose chan bool
-	rwm         sync.RWMutex
+	position            *model.Position
+	chFromClose         chan bool
+	closedTriggeredSync bool
+	rwm                 sync.RWMutex
 }
 
 const conditionsIsFulfilled = true
@@ -60,9 +62,7 @@ func (p *ActivePosition) StartTakeActualStateAndAutoClose(ctx context.Context, c
 			p.rwm.Lock()
 			p.position.Profit = profit
 			p.rwm.Unlock()
-
 		}
-
 	}
 }
 

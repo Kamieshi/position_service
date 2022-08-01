@@ -1,3 +1,4 @@
+// Package service
 package service
 
 import (
@@ -14,6 +15,12 @@ import (
 	"github.com/Kamieshi/position_service/internal/userStorage"
 )
 
+const (
+	timeIntervalFixedClosePosition      = 10 * time.Millisecond
+	timeIntervalCheckCommonProfit       = 10 * time.Millisecond
+	sizeQueueClosedPositionOnWriteToRep = 100
+)
+
 type UserPositions struct {
 	Positions                     *list.List
 	PositionsMap                  map[uuid.UUID]*ActivePosition
@@ -28,7 +35,7 @@ func NewUserPositions(userSt *userStorage.UserService) *UserPositions {
 	return &UserPositions{
 		Positions:                     list.New(),
 		PositionsMap:                  make(map[uuid.UUID]*ActivePosition),
-		BufferWriteClosePositionsInDB: make(chan *model.Position, 100), // Add size buffer in config
+		BufferWriteClosePositionsInDB: make(chan *model.Position, sizeQueueClosedPositionOnWriteToRep), // Add size buffer in config
 		userStorage:                   userSt,
 	}
 }
@@ -57,6 +64,13 @@ func (p *UserPositions) FixedClosedPosition(position *model.Position) error {
 		return fmt.Errorf("user position / FixedClosedPosition / add profit: %v", err)
 	}
 	p.closeAndDelete(position)
+	p.rwm.RLock()
+	if p.PositionsMap[position.ID].closedTriggeredSync {
+		p.rwm.RUnlock()
+		return nil
+	}
+	p.rwm.RUnlock()
+
 	p.writeInBufferClosedPositions(position)
 	return nil
 }
@@ -76,13 +90,14 @@ func (p *UserPositions) CloseByID(positionID uuid.UUID) (*model.Position, error)
 	if _, e := p.PositionsMap[positionID]; !e {
 		return nil, fmt.Errorf("user positions/ CloseByID / ActivePosition with ID %s not exist ", positionID)
 	}
+	p.rwm.RLock()
 	position := p.PositionsMap[positionID]
+	p.rwm.RUnlock()
 	err := position.StopTakeActualState()
 	if err != nil {
 		return nil, err
 	}
 	return position.position, nil
-
 }
 
 // StartTakeActualState run goroutine from take active position in actual state
@@ -92,7 +107,7 @@ func (p *UserPositions) StartTakeActualState(ctx context.Context, positionID uui
 	p.rwm.RUnlock()
 }
 
-// FixedClosedActivePositions in some period check all Active positions and when find position with field IsActive == false
+// FixedClosedActivePositions G. In some period check all Active positions and when find position with field IsActive == false
 // fixed this active position ( clean map, list, update user balance and write to db)
 func (p *UserPositions) FixedClosedActivePositions() {
 	logrus.Debug("Start FixedClosedActivePositions for user")
@@ -115,10 +130,9 @@ func (p *UserPositions) FixedClosedActivePositions() {
 			} else {
 				p.PositionsMap[positionElement.Value.(*model.Position).ID].rwm.RUnlock()
 			}
-
 		}
 		p.rwm.Unlock()
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(timeIntervalFixedClosePosition)
 	}
 }
 
@@ -135,10 +149,8 @@ func (p *UserPositions) CheckSummaryProfitAndAutoCloseMostNegativePositionWhenCo
 			}
 			if minProfitPosition == nil {
 				minProfitPosition = positionElement.Value.(*model.Position)
-			} else {
-				if minProfitPosition.Profit > positionElement.Value.(*model.Position).Profit {
-					minProfitPosition = positionElement.Value.(*model.Position)
-				}
+			} else if minProfitPosition.Profit > positionElement.Value.(*model.Position).Profit {
+				minProfitPosition = positionElement.Value.(*model.Position)
 			}
 			p.PositionsMap[positionElement.Value.(*model.Position).ID].rwm.RLock()
 			commonProfit += positionElement.Value.(*model.Position).Profit
@@ -162,6 +174,22 @@ func (p *UserPositions) CheckSummaryProfitAndAutoCloseMostNegativePositionWhenCo
 		}
 		minProfitPosition = nil
 		commonProfit = 0
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(timeIntervalCheckCommonProfit)
 	}
+}
+
+// CloseTriggeredSync Close position triggerred chanel sync from postgres
+func (p *UserPositions) CloseTriggeredSync(position *model.Position) error {
+	p.rwm.RLock()
+	if _, e := p.PositionsMap[position.ID]; !e {
+		return fmt.Errorf("user positions/ CloseTriggeredSync / ActivePosition with ID %s not exist ", position.ID)
+	}
+	activePosition := p.PositionsMap[position.ID]
+	p.rwm.RUnlock()
+	activePosition.closedTriggeredSync = true
+	err := p.PositionsMap[position.ID].StopTakeActualState()
+	if err != nil {
+		return fmt.Errorf("user positions/ CloseTriggeredSync / StopTakeActualState() with ID %s ", position.ID)
+	}
+	return nil
 }

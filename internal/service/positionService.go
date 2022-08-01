@@ -36,18 +36,14 @@ func (p *PositionsService) OpenPosition(ctx context.Context, position *model.Pos
 	logrus.Debug("Position service / OpenPosition ")
 	if state, err := p.checkActualOpenedPriceState(position); err != nil {
 		return fmt.Errorf("service position / OpenPosition / Error get actualState price : %v ", err)
-	} else {
-		if state != actualState {
-			return fmt.Errorf("service position / OpenPosition / Opened price isn't actual ")
-		}
+	} else if state != actualState {
+		return fmt.Errorf("service position / OpenPosition / Opened price isn't actual ")
 	}
 
 	if enough, err := p.checkEnoughBalanceUser(ctx, position); err != nil {
 		return fmt.Errorf("service position / OpenPosition / try check user balance : %v ", err)
-	} else {
-		if enough != enoughForOpenPosition {
-			return fmt.Errorf("service position / OpenPosition / Isn't enough monay for open position")
-		}
+	} else if enough != enoughForOpenPosition {
+		return fmt.Errorf("service position / OpenPosition / Isn't enough monay for open position")
 	}
 
 	if !p.userPositionsIsExist(position.User.ID) {
@@ -167,7 +163,7 @@ func (p *PositionsService) userPositionsIsExist(userID uuid.UUID) bool {
 	return true
 }
 
-func (p *PositionsService) closePositionForUser(userID uuid.UUID, positionID uuid.UUID) (*model.Position, error) {
+func (p *PositionsService) closePositionForUser(userID, positionID uuid.UUID) (*model.Position, error) {
 	position, err := p.UsersPositions[userID].CloseByID(positionID)
 	if err != nil {
 		return nil, fmt.Errorf("position service / closePositionForUser / close position : %v", err)
@@ -195,7 +191,6 @@ func (p *PositionsService) checkEnoughBalanceUser(ctx context.Context, position 
 		return false, nil
 	}
 	return true, nil
-
 }
 
 func (p *PositionsService) addNewUserPositions(userID uuid.UUID) {
@@ -263,12 +258,27 @@ func (p *PositionsService) getInitListenConnection(ctx context.Context) (*pgx.Co
 }
 
 func (p *PositionsService) openPositionTriggeredSync(position *model.Position) error {
-	panic("Implement")
+	if !p.userPositionsIsExist(position.User.ID) {
+		p.addNewUserPositions(position.User.ID)
+	}
+	activePosition := NewActiveOpenedPosition(position)
+	if err := p.addToUserPositions(activePosition); err != nil {
+		return fmt.Errorf("service position / openPositionTriggeredSync / add active position to user activePositions : %v ", err)
+
+	}
+	p.startTakeActualStateAndAddSubscriber(activePosition)
 	return nil
 }
 
 func (p *PositionsService) closePositionTriggeredSync(position *model.Position) error {
-	panic("Implement")
+	if p.userPositionsIsExist(position.User.ID) {
+		p.rwm.RLock()
+		err := p.UsersPositions[position.User.ID].CloseTriggeredSync(position)
+		p.rwm.RUnlock()
+		if err != nil {
+			return fmt.Errorf("position service / closePositionTriggeredSync / Close position : %v", err)
+		}
+	}
 	return nil
 }
 
