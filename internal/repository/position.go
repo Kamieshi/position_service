@@ -5,12 +5,11 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Kamieshi/position_service/internal/model"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/sirupsen/logrus"
-
-	"github.com/Kamieshi/position_service/internal/model"
 )
 
 // PositionRepository repo for work with positions
@@ -130,5 +129,4 @@ func (p *PositionRepository) GetAllUserPositions(ctx context.Context, userID uui
 		positions = append(positions, &position)
 	}
 	return positions, nil
-
 }

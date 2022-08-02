@@ -115,6 +115,7 @@ func (p *PositionManagerServerImplement) GetPositionByID(ctx context.Context, re
 			MaxProfit:       position.MaxCurrentCost,
 			MinProfit:       position.MinCurrentCost,
 			UserID:          position.User.ID.String(),
+			CloseProfit:     position.Profit,
 		},
 	}, nil
 }
