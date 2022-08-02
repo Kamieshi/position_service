@@ -1,0 +1,31 @@
+<h1>Position Service</h1>
+<h3> Required env param </h3>
+
+```
+POSTGRES_PASSWORD=
+POSTGRES_USER=
+POSTGRES_DB=
+POSTGRES_HOST=
+POSTGRES_PORT=
+POSITION_SERVICE_PORT_RPC=
+POSITION_SERVICE_HOST_RPC=
+PRICE_SERVICE_PORT_RPC=
+PRICE_SERVICE_HOST_RPC=
+```
+
+---
+
+#### ! For work price Service required PriceService, PostgresDB
+
+## Example env config for local RUN
+``` 
+POSTGRES_PASSWORD=postgres
+POSTGRES_USER=postgres
+POSTGRES_DB=postgres
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSITION_SERVICE_PORT_RPC=5301
+POSITION_SERVICE_HOST_RPC=localhost
+PRICE_SERVICE_PORT_RPC=5300
+PRICE_SERVICE_HOST_RPC=localhost
+```
