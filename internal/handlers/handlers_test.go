@@ -24,9 +24,9 @@ var (
 	priceStorage        *prst.PriceStore
 	UserServiceClient   protoc.UsersManagerClient
 	UserRep             *repository.UserRepository
-	companyID1          = "6b04e67c-f2b5-4a20-aec7-34f365d97419"
+	companyID1          = "8550780b-f246-4355-bb52-eba180b00896"
 	companies           = []string{
-		"6b04e67c-f2b5-4a20-aec7-34f365d97419",
+		"8550780b-f246-4355-bb52-eba180b00896",
 	}
 )
 
@@ -202,7 +202,7 @@ func TestFixedBuyPosition(t *testing.T) {
 		},
 		UserID:           clFromService.User.ID,
 		CountBuyPosition: 1,
-		MaxProfit:        15,
+		MaxProfit:        1,
 		MinProfit:        -100,
 		IsFixed:          true,
 		IsSales:          false,

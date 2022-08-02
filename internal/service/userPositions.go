@@ -7,12 +7,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Kamieshi/position_service/internal/model"
+	"github.com/Kamieshi/position_service/internal/userStorage"
 	"github.com/google/uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-
-	"github.com/Kamieshi/position_service/internal/model"
-	"github.com/Kamieshi/position_service/internal/userStorage"
 )
 
 const (
@@ -43,7 +42,7 @@ func NewUserPositions(userSt *userStorage.UserService) *UserPositions {
 
 // Add active position into PositionsMap and Positions List
 func (p *UserPositions) Add(activePosition *ActivePosition) error {
-	logrus.Debug("Add")
+	logrus.Debug("Add userPosition")
 	p.rwm.Lock()
 	if _, exist := p.PositionsMap[activePosition.position.ID]; exist {
 		p.rwm.Unlock()
@@ -179,6 +178,7 @@ func (p *UserPositions) CloseTriggeredSync(position *model.Position) error {
 	logrus.Debug("CloseTriggeredSync : ", position)
 	p.rwm.RLock()
 	if _, e := p.PositionsMap[position.ID]; !e {
+		p.rwm.RUnlock()
 		return fmt.Errorf("user positions/ CloseTriggeredSync / ActivePosition with ID %s not exist ", position.ID)
 	}
 	activePosition := p.PositionsMap[position.ID]

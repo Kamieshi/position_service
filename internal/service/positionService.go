@@ -4,15 +4,14 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4"
-	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
-
 	"github.com/Kamieshi/position_service/internal/model"
 	"github.com/Kamieshi/position_service/internal/priceStorage"
 	"github.com/Kamieshi/position_service/internal/repository"
 	"github.com/Kamieshi/position_service/internal/userStorage"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
 )
 
 // PositionsService  Main service for work with positions
@@ -43,6 +42,12 @@ func (p *PositionsService) OpenPosition(ctx context.Context, position *model.Pos
 		return fmt.Errorf("service position / OpenPosition / try check user balance : %v ", err)
 	} else if !enough {
 		return fmt.Errorf("service position / OpenPosition / Isn't enough monay for open position")
+	}
+
+	if position.IsFixes {
+		if !p.checkStartStateProfit(position) {
+			return fmt.Errorf("invalid fixed param ")
+		}
 	}
 
 	if !p.userPositionsIsExist(position.User.ID) {
@@ -213,10 +218,18 @@ func (p *PositionsService) checkEnoughBalanceUser(ctx context.Context, position 
 	if err != nil {
 		return false, fmt.Errorf("service position / checkEnoughBalanceUser / Try get user : %v ", err)
 	}
+	if position.IsSales {
+		return true, nil
+	}
 	if int64(position.OpenPrice.Ask*position.CountBuyPosition) > user.Balance {
 		return false, nil
 	}
 	return true, nil
+}
+
+func (p *PositionsService) checkStartStateProfit(position *model.Position) bool {
+	profit := int64(position.CountBuyPosition*position.OpenPrice.Bid) - int64(position.CountBuyPosition*position.OpenPrice.Ask)
+	return profit >= position.MinCurrentCost && profit <= position.MaxCurrentCost
 }
 
 func (p *PositionsService) addNewUserPositions(userID uuid.UUID) {

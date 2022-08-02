@@ -5,13 +5,6 @@ import (
 	"net"
 	"runtime"
 
-	priceProtoc "github.com/Kamieshi/price_service/protoc"
-	"github.com/google/uuid"
-	"github.com/jackc/pgx/v4/pgxpool"
-	log "github.com/sirupsen/logrus"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
 	"github.com/Kamieshi/position_service/internal/config"
 	"github.com/Kamieshi/position_service/internal/handlers"
 	"github.com/Kamieshi/position_service/internal/priceStorage"
@@ -19,10 +12,16 @@ import (
 	"github.com/Kamieshi/position_service/internal/service"
 	"github.com/Kamieshi/position_service/internal/userStorage"
 	"github.com/Kamieshi/position_service/protoc"
+	priceProtoc "github.com/Kamieshi/price_service/protoc"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v4/pgxpool"
+	log "github.com/sirupsen/logrus"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 	conf, err := config.GetConfig()
 	if err != nil {
 		log.WithError(err).Fatal()
