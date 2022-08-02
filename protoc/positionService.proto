@@ -33,6 +33,7 @@ message Position{
   int64 MinProfit = 10;
   string UserID = 11;
   int64 CloseProfit = 12;
+  uint32 CountPosition = 13;
 }
 
 service PositionsManager{
