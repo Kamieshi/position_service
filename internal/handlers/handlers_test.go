@@ -7,16 +7,15 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Kamieshi/position_service/internal/model"
+	prst "github.com/Kamieshi/position_service/internal/priceStorage"
+	"github.com/Kamieshi/position_service/internal/repository"
+	"github.com/Kamieshi/position_service/protoc"
 	priceProtoc "github.com/Kamieshi/price_service/protoc"
 	"github.com/jackc/pgx/v4/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-
-	"github.com/Kamieshi/position_service/internal/model"
-	prst "github.com/Kamieshi/position_service/internal/priceStorage"
-	"github.com/Kamieshi/position_service/internal/repository"
-	"github.com/Kamieshi/position_service/protoc"
 )
 
 var (
@@ -251,7 +250,7 @@ func TestAddBalance(t *testing.T) {
 
 func TestManyUsersOpenPosition(t *testing.T) {
 	countUsers := 10
-	countPosition := 100
+	countPosition := 1
 
 	users := make([]*model.User, 0, countUsers)
 	for i := 0; i < countUsers; i++ {

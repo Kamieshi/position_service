@@ -147,6 +147,7 @@ func (p *PositionManagerServerImplement) GetAllUserPositions(ctx context.Context
 			MaxProfit:       position.MaxCurrentCost,
 			MinProfit:       position.MinCurrentCost,
 			UserID:          position.User.ID.String(),
+			CloseProfit:     position.Profit,
 		})
 	}
 	return &protoc.GetAllUserPositionsResponse{
